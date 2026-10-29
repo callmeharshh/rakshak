@@ -15,7 +15,7 @@ official 24-hour window: **11 Nov 2026, 10:00 AM &rarr; 12 Nov 2026, 10:00 AM IS
 AgentX Hackathon 2026 rules. The stub files under `agents/` say so explicitly, and every
 one of their functions raises `NotImplementedError`.
 
-Live preview of the dashboard mockup: **[link added once deployed]**
+Live preview of the dashboard mockup: **https://rakshak-ps03-smoothoperator.netlify.app**
 
 ## The problem
 
