@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RAKSHAK — Concept Preview</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<style>
+  :root {
+    --navy: #0B1F3A;
+    --slate: #2E4C73;
+    --cardbg: #EEF1F6;
+    --orange: #FF6B35;
+    --muted: #5B7A9B;
+    --mutedlight: #9FB3C8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Calibri", "Segoe UI", Arial, sans-serif; background: #fff; color: var(--navy); }
+  header { background: var(--navy); color: #fff; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header .brand { font-weight: 800; font-size: 20px; letter-spacing: 0.5px; }
+  header .tag { color: var(--mutedlight); font-size: 13px; }
+  .banner { background: #FFF4EC; border-bottom: 1px solid #FFD9C2; color: #7A3410; font-size: 13.5px; padding: 10px 20px; line-height: 1.5; }
+  .banner b { color: #5A2200; }
+  .layout { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 16px 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  #map { height: 560px; border-radius: 10px; border: 1px solid #E2E6ED; }
+  .panel { background: var(--cardbg); border-radius: 10px; padding: 14px; }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; }
+  .scroll { max-height: 230px; overflow-y: auto; }
+  .incident-row { background: #fff; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12.5px; }
+  .incident-row .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .ward { font-weight: 700; }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; color: #fff; text-transform: uppercase; letter-spacing: .3px; }
+  .badge.new { background: #8A96A3; }
+  .badge.triaged { background: #2E4C73; }
+  .badge.dispatched { background: var(--orange); }
+  .badge.resolved { background: #2E8B57; }
+  .desc { color: var(--muted); }
+  .vol-row { display: flex; justify-content: space-between; background: #fff; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 12.5px; }
+  .vol-row .name { font-weight: 700; }
+  .vol-row .type { color: var(--muted); font-size: 11px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .empty-log { color: var(--muted); font-size: 12.5px; font-style: italic; padding: 10px 0; }
+  footer { padding: 16px 20px 28px; color: var(--muted); font-size: 12px; text-align: center; }
+  footer a { color: var(--slate); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">RAKSHAK</div>
+    <div class="tag">Smooth Operator &middot; PS-03 &middot; AgentX Hackathon 2026</div>
+  </div>
+  <div class="tag">Concept Preview &mdash; UI mockup, not a live system</div>
+</header>
+
+<div class="banner">
+  <b>What this is:</b> a static preview of the dashboard's layout, built before the hackathon as pre-build scaffolding.
+  Every incident, status and dispatch below is <b>fabricated example data</b> for design purposes &mdash; no agent has
+  read, scored or dispatched anything. Sentinel, Dispatch and Bulletin do not exist yet. They will be built live during
+  the official 24-hour window, <b>11&ndash;12 Nov 2026</b>. Source: <a href="https://github.com/callmeharshh/rakshak" style="color:#7A3410">github.com/callmeharshh/rakshak</a>.
+</div>
+
+<div class="layout">
+  <div id="map"></div>
+
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div class="panel">
+      <h2>Incidents <span style="font-weight:400;color:var(--muted)">(mock data)</span></h2>
+      <div id="incidentList" class="scroll"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Volunteers &amp; resources <span style="font-weight:400;color:var(--muted)">(mock roster)</span></h2>
+      <div id="volunteerList" class="scroll"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Agent activity log</h2>
+      <div class="empty-log">No agent activity yet &mdash; this fills in once Sentinel, Dispatch and Bulletin are live.</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Pre-hackathon scaffold for PS-03, AgentX Hackathon 2026. Repo: <a href="https://github.com/callmeharshh/rakshak">github.com/callmeharshh/rakshak</a>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+  const sevColor = (s) => s >= 4 ? '#D7263D' : s === 3 ? '#FF6B35' : '#F2B84B';
+  const statusLabel = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const map = L.map('map').setView([19.06, 72.88], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  fetch('./data/mock.json')
+    .then(r => r.json())
+    .then(({ incidents, volunteers }) => {
+      const list = document.getElementById('incidentList');
+      incidents.forEach(inc => {
+        if (inc.duplicate_of) return; // collapsed into the incident it duplicates, same as Sentinel will do
+        L.circleMarker([inc.lat, inc.lon], {
+          radius: 6, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.85, weight: 1
+        }).addTo(map).bindPopup(
+          `<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`
+        );
+
+        const row = document.createElement('div');
+        row.className = 'incident-row';
+        row.innerHTML = `
+          <div class="meta">
+            <span class="ward">${inc.ward}</span>
+            <span class="badge ${inc.status}">${statusLabel(inc.status)}</span>
+          </div>
+          <div class="desc">${inc.description}</div>`;
+        list.appendChild(row);
+      });
+
+      const volList = document.getElementById('volunteerList');
+      volunteers.forEach(v => {
+        const row = document.createElement('div');
+        row.className = 'vol-row';
+        row.innerHTML = `
+          <span><span class="dot" style="background:${v.available ? '#2E8B57' : '#B3B9C2'}"></span>
+          <span class="name">${v.name}</span></span>
+          <span class="type">${v.resource_type.replace('_',' ')}</span>`;
+        volList.appendChild(row);
+      });
+    });
+</script>
+
+</body>
+</html>
