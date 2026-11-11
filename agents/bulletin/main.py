@@ -22,18 +22,20 @@ import urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common import sb_request, groq_chat, log_activity  # noqa: E402
 
-LANG_NAME = {"hi": "Hindi", "mr": "Marathi"}
+LANG_NAME = {"hi": "Hinglish (Hindi-English code-mixed, Roman script, no Devanagari)",
+             "mr": "Marathi-English code-mixed (Roman script, no Devanagari)"}
 
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 
 def draft_message(incident):
-    lang = LANG_NAME.get(incident["language"], "Hindi")
+    lang = LANG_NAME.get(incident["language"], LANG_NAME["hi"])
     prompt = (
         f"Write a short, reassuring status update (under 40 words) in {lang}, for residents of "
         f"{incident['ward']} about this report: \"{incident['description']}\". "
-        "A response team has just been dispatched to help. Plain text only, no markdown, no preamble."
+        "A response team has just been dispatched to help. Plain text only, no markdown, no preamble, "
+        "Roman/English letters only -- no Devanagari script."
     )
     return groq_chat(prompt, max_tokens=200).strip()
 
