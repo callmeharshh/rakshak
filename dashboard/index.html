@@ -15,7 +15,7 @@
       extend: {
         fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
         colors: {
-          bg: '#0A0C10', card: '#12151C', border: '#1E222B',
+          bg: '#08090D', glass: 'rgba(255,255,255,0.045)', hairline: 'rgba(255,255,255,0.09)',
           dim: '#8B93A3', dimmer: '#565E6C',
           brand: '#FF6B35', slate2: '#7C93B8', green2: '#34D399', red2: '#F87171', amber2: '#FBBF24',
         },
@@ -24,39 +24,66 @@
   };
 </script>
 <style>
-  html, body { background: #0A0C10; }
+  html, body { background: #08090D; }
   body {
     background-image:
-      radial-gradient(1100px 500px at 12% -10%, rgba(255,107,53,0.13), transparent 60%),
-      radial-gradient(900px 450px at 110% 8%, rgba(52,211,153,0.07), transparent 55%);
+      radial-gradient(1200px 560px at 10% -12%, rgba(255,107,53,0.16), transparent 60%),
+      radial-gradient(1000px 500px at 112% 6%, rgba(52,211,153,0.08), transparent 55%);
     background-attachment: fixed;
   }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  /* spring-ish easing used everywhere motion happens, per Apple's critically-damped default */
+  :root { --spring: cubic-bezier(.22,1,.36,1); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .anim-in { animation: fadeUp .5s cubic-bezier(.16,1,.3,1) both; }
-  .anim-fade { animation: fadeIn .3s ease both; }
-  .d1 { animation-delay: .05s } .d2 { animation-delay: .1s } .d3 { animation-delay: .16s } .d4 { animation-delay: .22s }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .anim-in { animation: fadeUp .6s var(--spring) both; }
+  .anim-fade { animation: fadeIn .35s var(--spring) both; }
+  .d1 { animation-delay: .06s } .d2 { animation-delay: .12s } .d3 { animation-delay: .18s } .d4 { animation-delay: .24s }
 
-  .pulse-dot { box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: pulseRing 1.8s ease-in-out infinite; }
-  @keyframes pulseRing { 70% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
-  .spin-once { transition: transform .6s cubic-bezier(.4,0,.2,1); }
+  .glass {
+    background: rgba(255,255,255,0.045);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-top-color: rgba(255,255,255,0.16);
+  }
+  .glass-hover { transition: transform .35s var(--spring), border-color .35s var(--spring), background .35s var(--spring); }
+  .glass-hover:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.065); }
+
+  .pulse-dot { animation: pulseRing 1.8s ease-in-out infinite; }
+  @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); } 70% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
+  .spin-once { transition: transform .7s var(--spring); }
   .spin-once.go { transform: rotate(360deg); }
 
   .scroll::-webkit-scrollbar { width: 6px; }
-  .scroll::-webkit-scrollbar-thumb { background: #262B36; border-radius: 4px; }
+  .scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 4px; }
 
-  #approvals { transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .3s ease, padding .35s ease, margin .35s ease, border-width .35s ease; overflow: hidden; max-height: 600px; opacity: 1; }
+  #approvals { transition: max-height .45s var(--spring), opacity .35s var(--spring), padding .45s var(--spring), margin .45s var(--spring), border-width .45s var(--spring); overflow: hidden; max-height: 600px; opacity: 1; }
   #approvals.collapsed { max-height: 0; opacity: 0; padding: 0 !important; margin: 0 !important; border-width: 0 !important; }
+
+  .press { transition: transform .15s var(--spring); }
+  .press:active { transform: scale(.96); }
 
   .leaflet-popup-content-wrapper { background: #161A22; color: #F3F5F8; border-radius: 10px; }
   .leaflet-popup-tip { background: #161A22; }
   .leaflet-popup-content b { color: #fff; }
-  .leaflet-control-attribution { background: rgba(10,12,16,0.75) !important; color: #565E6C !important; }
+  .leaflet-control-attribution { background: rgba(8,9,13,0.75) !important; color: #565E6C !important; }
   .leaflet-control-attribution a { color: #8B93A3 !important; }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9); }
+
+  input, textarea, select {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #F3F5F8;
+  }
+  input::placeholder, textarea::placeholder { color: #565E6C; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: rgba(255,107,53,0.5); background: rgba(255,255,255,0.06); }
+
+  #toasts { position: fixed; bottom: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+  .toast { animation: toastIn .4s var(--spring) both; }
 </style>
 </head>
 <body class="font-sans text-[#F3F5F8] min-h-screen">
+
+<div id="toasts"></div>
 
 <header class="anim-in flex items-center justify-between gap-3 px-6 sm:px-8 py-5 flex-wrap">
   <div class="flex items-center gap-3">
@@ -66,18 +93,18 @@
       <div class="text-[11px] font-semibold uppercase tracking-wider text-dim">Smooth Operator &middot; PS-03 &middot; AgentX 2026</div>
     </div>
   </div>
-  <div class="flex items-center gap-2 bg-card border border-border rounded-full pl-2.5 pr-3.5 py-1.5 text-xs font-semibold">
+  <div class="flex items-center gap-2 glass rounded-full pl-2.5 pr-3.5 py-1.5 text-xs font-semibold">
     <span class="w-1.5 h-1.5 rounded-full bg-green2 pulse-dot"></span> Live
     <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-dimmer spin-once" id="refreshIcon"></i>
   </div>
 </header>
 
-<div class="flex items-center gap-2 px-6 sm:px-8 py-2.5 border-y border-border bg-white/[0.015] text-xs text-dim">
+<div class="flex items-center gap-2 px-6 sm:px-8 py-2.5 border-y border-hairline bg-white/[0.02] text-xs text-dim">
   <i data-lucide="radio" class="w-3.5 h-3.5 text-green2 shrink-0"></i>
   <span>Sentinel triaging &middot; Dispatch matching volunteers &middot; Bulletin notifying residents on Telegram &middot; human-approval guardrail active</span>
 </div>
 
-<div class="px-6 sm:px-8 py-2.5 bg-card/60 border-b border-border text-[12.5px] text-dim leading-relaxed">
+<div class="px-6 sm:px-8 py-2.5 bg-white/[0.015] border-b border-hairline text-[12.5px] text-dim leading-relaxed">
   <b class="text-[#F3F5F8]">What this is:</b> a live dashboard reading straight from Supabase. Sentinel, Dispatch and Bulletin
   are real agents built during the official 24-hour window, <b class="text-[#F3F5F8]">11&ndash;12 Nov 2026</b> &mdash; they triage
   incoming reports, match and dispatch volunteers, and notify affected residents over Telegram. Incident and volunteer data is
@@ -87,36 +114,68 @@
 
 <div id="statsRow" class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 px-6 sm:px-8 pt-6"></div>
 
-<div class="grid lg:grid-cols-[2fr_1fr] gap-4 px-6 sm:px-8 py-5 anim-in d2 items-start">
-  <div id="map" class="h-[580px] rounded-2xl border border-border shadow-2xl shadow-black/40"></div>
+<!-- Try it yourself -->
+<div class="grid lg:grid-cols-2 gap-4 px-6 sm:px-8 pt-5 anim-in d2">
+  <div class="glass glass-hover rounded-2xl p-5 shadow-2xl shadow-black/30">
+    <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-1 flex items-center gap-1.5">
+      <i data-lucide="send" class="w-3.5 h-3.5 text-green2"></i> Try it yourself &mdash; on Telegram
+    </h2>
+    <p class="text-dim text-[13px] leading-relaxed mb-3.5">
+      Message our live bot with a one-line disaster report. Sentinel, Dispatch and Bulletin will
+      actually triage and dispatch it &mdash; and the bot replies to <b class="text-[#F3F5F8]">your</b> phone the moment help is confirmed.
+    </p>
+    <a href="https://t.me/RakshakBulletinBot" target="_blank" rel="noopener"
+       class="press inline-flex items-center gap-2 bg-gradient-to-br from-green2 to-emerald-400 text-[#06120C] text-sm font-bold px-4 py-2.5 rounded-lg shadow-lg shadow-green2/25 hover:-translate-y-0.5 transition-transform">
+      <i data-lucide="message-circle" class="w-4 h-4"></i> Open @RakshakBulletinBot
+    </a>
+  </div>
+
+  <div class="glass glass-hover rounded-2xl p-5 shadow-2xl shadow-black/30">
+    <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-1 flex items-center gap-1.5">
+      <i data-lucide="zap" class="w-3.5 h-3.5 text-brand"></i> Simulate an incident
+    </h2>
+    <p class="text-dim text-[13px] leading-relaxed mb-3">No Telegram needed &mdash; inject a report straight into the pipeline and watch it flow through the map and panels below.</p>
+    <form id="simForm" class="flex flex-col sm:flex-row gap-2">
+      <select id="simWard" class="rounded-lg px-3 py-2 text-sm flex-shrink-0"></select>
+      <input id="simDesc" type="text" required placeholder="e.g. Water entering ground floor, two children inside"
+             class="rounded-lg px-3 py-2 text-sm flex-1 min-w-0" />
+      <button type="submit" class="press bg-gradient-to-br from-brand to-orange-300 text-[#140A05] text-sm font-bold px-4 py-2 rounded-lg shadow-lg shadow-brand/25 hover:-translate-y-0.5 transition-transform flex items-center gap-1.5 justify-center shrink-0">
+        <i data-lucide="send-horizontal" class="w-4 h-4"></i> Submit
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-[2fr_1fr] gap-4 px-6 sm:px-8 py-5 anim-in d3 items-start">
+  <div id="map" class="h-[580px] rounded-2xl border border-hairline shadow-2xl shadow-black/40"></div>
 
   <div class="flex flex-col gap-4">
-    <div id="approvals" class="collapsed bg-card border border-brand/25 rounded-2xl p-4 shadow-xl shadow-black/20">
+    <div id="approvals" class="collapsed glass border-brand/25 rounded-2xl p-4 shadow-xl shadow-black/20">
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center gap-1.5">
         <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-brand"></i> Needs your approval
       </h2>
       <div id="approvalsList" class="scroll max-h-[230px] overflow-y-auto"></div>
     </div>
 
-    <div class="bg-card border border-border rounded-2xl p-4 shadow-xl shadow-black/20">
+    <div class="glass rounded-2xl p-4 shadow-xl shadow-black/20">
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center justify-between">
         <span class="flex items-center gap-1.5"><i data-lucide="siren" class="w-3.5 h-3.5"></i> Incidents</span>
-        <span id="incidentCount" class="bg-white/[0.06] text-[#F3F5F8] rounded-full px-2.5 py-0.5 text-[11px] font-mono">0</span>
+        <span id="incidentCount" class="bg-white/[0.08] text-[#F3F5F8] rounded-full px-2.5 py-0.5 text-[11px] font-mono">0</span>
       </h2>
       <div id="incidentList" class="scroll max-h-[230px] overflow-y-auto"></div>
     </div>
 
-    <div class="bg-card border border-border rounded-2xl p-4 shadow-xl shadow-black/20">
+    <div class="glass rounded-2xl p-4 shadow-xl shadow-black/20">
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center justify-between">
         <span class="flex items-center gap-1.5"><i data-lucide="users" class="w-3.5 h-3.5"></i> Volunteers &amp; resources</span>
-        <span id="volunteerCount" class="bg-white/[0.06] text-[#F3F5F8] rounded-full px-2.5 py-0.5 text-[11px] font-mono">0</span>
+        <span id="volunteerCount" class="bg-white/[0.08] text-[#F3F5F8] rounded-full px-2.5 py-0.5 text-[11px] font-mono">0</span>
       </h2>
       <div id="volunteerList" class="scroll max-h-[230px] overflow-y-auto"></div>
     </div>
 
-    <div class="bg-card border border-border rounded-2xl p-4 shadow-xl shadow-black/20">
+    <div class="glass rounded-2xl p-4 shadow-xl shadow-black/20">
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center gap-1.5">
-        <i data-lucide="activity" class="w-3.5 h-3.5"></i> Agent activity log
+        <i data-lucide="brain-circuit" class="w-3.5 h-3.5"></i> Watch the AI decide
       </h2>
       <div id="activityLog" class="scroll max-h-[230px] overflow-y-auto">
         <div class="text-dimmer text-[13px] italic py-2">No agent activity yet.</div>
@@ -140,8 +199,16 @@
     new: 'bg-slate2/15 text-slate2', triaged: 'bg-amber2/15 text-amber2',
     dispatched: 'bg-brand/15 text-brand', resolved: 'bg-green2/15 text-green2',
   };
-  const agentIcon = { sentinel: 'eye', dispatch: 'truck', bulletin: 'send', human: 'user-check' };
-  const agentColor = { sentinel: 'text-slate2 bg-slate2/15', dispatch: 'text-amber2 bg-amber2/15', bulletin: 'text-green2 bg-green2/15', human: 'text-brand bg-brand/15' };
+  const agentIcon = { sentinel: 'eye', dispatch: 'truck', bulletin: 'send', human: 'user-check', intake: 'message-circle' };
+  const agentColor = { sentinel: 'text-slate2 bg-slate2/15', dispatch: 'text-amber2 bg-amber2/15', bulletin: 'text-green2 bg-green2/15', human: 'text-brand bg-brand/15', intake: 'text-green2 bg-green2/15' };
+
+  // mirrors agents/common.py WARDS -- kept in sync by hand, small fixed list, not worth a build step for
+  const WARDS = {
+    Kurla: [19.0728, 72.8826], Sion: [19.0448, 72.8626], Dharavi: [19.0411, 72.8514],
+    Chembur: [19.0522, 72.9005], Bandra: [19.0596, 72.8295], Andheri: [19.1136, 72.8697],
+    Wadala: [19.0176, 72.8565], Matunga: [19.0273, 72.8554], Santacruz: [19.0821, 72.8411],
+  };
+  document.getElementById('simWard').innerHTML = Object.keys(WARDS).map(w => `<option value="${w}">${w}</option>`).join('');
 
   const map = L.map('map').setView([19.06, 72.88], 11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -155,6 +222,16 @@
   const SUPABASE_KEY = 'sb_publishable_j7rNFGv-Hle9c7rhAvlpDQ_Vrb1LgwA';
   const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
   const markers = L.layerGroup().addTo(map);
+  let lastSeenActivityId = null;
+
+  function toast(icon, color, text) {
+    const el = document.createElement('div');
+    el.className = 'toast glass rounded-xl p-3 shadow-2xl shadow-black/40 flex items-start gap-2.5 text-[13px]';
+    el.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 ${color} mt-0.5 shrink-0"></i><span class="text-[#F3F5F8]">${text}</span>`;
+    document.getElementById('toasts').appendChild(el);
+    lucide.createIcons();
+    setTimeout(() => { el.style.transition = 'opacity .4s, transform .4s'; el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; setTimeout(() => el.remove(), 400); }, 5000);
+  }
 
   function approve(dispatchId, incidentId) {
     const writeHeaders = { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
@@ -172,6 +249,22 @@
       }),
     ]).then(load);
   }
+
+  document.getElementById('simForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const ward = document.getElementById('simWard').value;
+    const desc = document.getElementById('simDesc').value.trim();
+    if (!desc) return;
+    const [lat, lon] = WARDS[ward];
+    fetch(`${SUPABASE_URL}/rest/v1/incidents`, {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ source: 'dashboard_demo', ward, lat, lon, description: desc, need_type: 'rescue', language: 'hi', status: 'new' }),
+    }).then(() => {
+      document.getElementById('simDesc').value = '';
+      toast('zap', 'text-brand', `Incident submitted in <b>${ward}</b> &mdash; Sentinel will triage it within seconds.`);
+      load();
+    });
+  });
 
   function animateCount(el, duration) {
     const target = Number(el.dataset.target);
@@ -193,7 +286,7 @@
       resolved: live.filter(i => i.status === 'resolved').length,
     };
     const cards = [
-      { icon: 'layout-grid', color: 'text-[#F3F5F8]', bg: 'bg-white/[0.07]', n: counts.total, label: 'Total incidents', delay: 'd1' },
+      { icon: 'layout-grid', color: 'text-[#F3F5F8]', bg: 'bg-white/[0.08]', n: counts.total, label: 'Total incidents', delay: 'd1' },
       { icon: 'clock', color: 'text-slate2', bg: 'bg-slate2/15', n: counts.active, label: 'Awaiting action', delay: 'd2' },
       { icon: 'truck', color: 'text-brand', bg: 'bg-brand/15', n: counts.dispatched, label: 'Dispatched', delay: 'd3' },
       { icon: 'check-circle-2', color: 'text-green2', bg: 'bg-green2/15', n: counts.resolved, label: 'Resolved', delay: 'd4' },
@@ -201,15 +294,15 @@
     const row = document.getElementById('statsRow');
     const firstRender = !row.childElementCount;
     row.innerHTML = cards.map(c => `
-      <div class="anim-in ${c.delay} bg-card border border-border rounded-2xl p-5 shadow-xl shadow-black/20 hover:border-white/20 hover:-translate-y-0.5 transition-all">
+      <div class="anim-in ${c.delay} glass glass-hover rounded-2xl p-5 shadow-xl shadow-black/20">
         <div class="w-9 h-9 rounded-lg ${c.bg} ${c.color} flex items-center justify-center mb-4">
           <i data-lucide="${c.icon}" class="w-4 h-4"></i>
         </div>
-        <div class="text-3xl font-extrabold tracking-tight font-mono tabular-nums" data-target="${c.n}">0</div>
+        <div class="text-3xl font-extrabold tracking-[-0.02em] font-mono tabular-nums" data-target="${c.n}">0</div>
         <div class="text-xs text-dim mt-1.5 font-medium">${c.label}</div>
       </div>`).join('');
     lucide.createIcons();
-    row.querySelectorAll('[data-target]').forEach(el => animateCount(el, firstRender ? 450 : 280));
+    row.querySelectorAll('[data-target]').forEach(el => animateCount(el, firstRender ? 500 : 300));
   }
 
   function render(incidents, volunteers, activity, approvals) {
@@ -225,7 +318,7 @@
           <span class="bg-red2/15 text-red2 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">Severity ${a.incidents.severity}</span>
         </div>
         <div class="text-dim mb-2.5 leading-relaxed">${a.incidents.description}<br>&rarr; ${a.volunteers.name} (${a.volunteers.resource_type.replace('_',' ')}), ${a.resources_committed} resources</div>
-        <button onclick="approve(${a.id}, ${a.incident_id})" class="bg-gradient-to-br from-brand to-orange-300 text-[#140A05] text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-brand/30 hover:-translate-y-0.5 active:scale-95 transition-transform">Approve dispatch</button>
+        <button onclick="approve(${a.id}, ${a.incident_id})" class="press bg-gradient-to-br from-brand to-orange-300 text-[#140A05] text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-brand/30 hover:-translate-y-0.5 transition-transform">Approve dispatch</button>
       </div>`).join('');
 
     const list = document.getElementById('incidentList');
@@ -237,10 +330,10 @@
       if (inc.severity >= 4) {
         L.circleMarker([inc.lat, inc.lon], { radius: 16, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.14, weight: 0 }).addTo(markers);
       }
-      L.circleMarker([inc.lat, inc.lon], { radius: 7, color: '#0A0C10', fillColor: sevColor(inc.severity), fillOpacity: 0.95, weight: 2 })
+      L.circleMarker([inc.lat, inc.lon], { radius: 7, color: '#08090D', fillColor: sevColor(inc.severity), fillOpacity: 0.95, weight: 2 })
         .addTo(markers).bindPopup(`<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`);
       const row = document.createElement('div');
-      row.className = 'anim-fade bg-white/[0.02] hover:bg-white/[0.04] border border-transparent hover:border-white/10 rounded-xl p-3 mb-2 text-[13px] transition-all';
+      row.className = 'anim-fade bg-white/[0.02] hover:bg-white/[0.045] border border-transparent hover:border-white/10 rounded-xl p-3 mb-2 text-[13px] transition-all duration-300';
       row.innerHTML = `
         <div class="flex justify-between items-center mb-1">
           <span class="font-bold">${inc.ward}</span>
@@ -280,13 +373,24 @@
             <div class="text-dim leading-relaxed">${a.action}${a.details ? ' &mdash; ' + a.details : ''}</div>
           </div>
         </div>`).join('');
+
+    if (activity.length) {
+      const newestId = activity[0].id;
+      if (lastSeenActivityId !== null) {
+        activity.filter(a => a.id > lastSeenActivityId).reverse().forEach(a => {
+          toast(agentIcon[a.agent_name] || 'bot', (agentColor[a.agent_name] || '').split(' ')[0] || 'text-dim',
+                `<b class="capitalize">${a.agent_name}</b> &mdash; ${a.action}${a.details ? ': ' + a.details.slice(0, 80) : ''}`);
+        });
+      }
+      lastSeenActivityId = newestId;
+    }
     lucide.createIcons();
   }
 
   function load() {
     const icon = document.getElementById('refreshIcon');
     icon.classList.add('go');
-    setTimeout(() => icon.classList.remove('go'), 600);
+    setTimeout(() => icon.classList.remove('go'), 700);
     Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/incidents?select=*`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/volunteers?select=*`, { headers }).then(r => r.json()),

@@ -21,13 +21,13 @@ SUPABASE_KEY = os.environ["SUPABASE_ANON_KEY"]
 GROQ_KEY = os.environ["LLM_API_KEY"]
 
 
-def sb_request(path, method="GET", body=None):
+def sb_request(path, method="GET", body=None, return_repr=False):
     headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
     data = None
     if body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
-        headers["Prefer"] = "return=minimal"
+        headers["Prefer"] = "return=representation" if return_repr else "return=minimal"
     req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}", method=method, data=data, headers=headers)
     resp = urllib.request.urlopen(req).read()
     return json.loads(resp) if resp else None
@@ -48,6 +48,15 @@ def groq_chat(prompt, max_tokens=300):
     )
     resp = json.loads(urllib.request.urlopen(req).read())
     return resp["choices"][0]["message"]["content"]
+
+
+WARDS = {
+    "Kurla": (19.0728, 72.8826, "mr"), "Sion": (19.0448, 72.8626, "hi"),
+    "Dharavi": (19.0411, 72.8514, "mr"), "Chembur": (19.0522, 72.9005, "mr"),
+    "Bandra": (19.0596, 72.8295, "hi"), "Andheri": (19.1136, 72.8697, "mr"),
+    "Wadala": (19.0176, 72.8565, "mr"), "Matunga": (19.0273, 72.8554, "mr"),
+    "Santacruz": (19.0821, 72.8411, "mr"),
+}
 
 
 def haversine_km(lat1, lon1, lat2, lon2):

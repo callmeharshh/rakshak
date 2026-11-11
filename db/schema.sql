@@ -15,7 +15,8 @@ CREATE TABLE incidents (
     language        TEXT NOT NULL,              -- 'hi' | 'mr'
     severity        SMALLINT,                   -- 1-5, filled in by Sentinel (built during the hackathon)
     status          TEXT NOT NULL DEFAULT 'new',-- 'new' | 'triaged' | 'dispatched' | 'resolved'
-    duplicate_of    INTEGER REFERENCES incidents(id)
+    duplicate_of    INTEGER REFERENCES incidents(id),
+    reporter_chat_id BIGINT                     -- Telegram chat id, for incidents reported live via @RakshakBulletinBot
 );
 
 CREATE TABLE volunteers (

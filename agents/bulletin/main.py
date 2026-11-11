@@ -38,8 +38,8 @@ def draft_message(incident):
     return groq_chat(prompt, max_tokens=200).strip()
 
 
-def send_whatsapp(message):
-    body = urllib.parse.urlencode({"chat_id": TELEGRAM_CHAT_ID, "text": message}).encode()
+def send_whatsapp(message, chat_id):
+    body = urllib.parse.urlencode({"chat_id": chat_id, "text": message}).encode()
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
         method="POST", data=body,
@@ -63,7 +63,8 @@ def process_once(limit=None):
         if limit is not None and sent_count >= limit:
             break
         message = draft_message(inc)
-        result = send_whatsapp(message)
+        chat_id = inc.get("reporter_chat_id") or TELEGRAM_CHAT_ID
+        result = send_whatsapp(message, chat_id)
         log_activity("bulletin", inc["id"], "sent_whatsapp", f"sid={result.get('sid', '?')}: {message}")
         print(f"#{inc['id']}: sent -> {message}")
         sent_count += 1
