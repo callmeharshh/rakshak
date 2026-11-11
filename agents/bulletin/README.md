@@ -1,18 +1,23 @@
 # Bulletin
 
-**Status: not built yet.** Planned for hours 16-20 of the Nov 11-12 hackathon window.
+**Status: built.** Polls `incidents` where `status = 'dispatched'` and not yet messaged,
+drafts a short status update, and sends it for real.
 
 ## Job
 
-1. Poll `dispatch_log` entries that were just confirmed (auto or human-approved).
-2. Draft a short, plain-language status update for the affected ward.
-3. Translate it into Hindi or Marathi (whichever `incidents.language` says) via an LLM call --
-   no separate translation model, no Bhashini/IndicTrans2 infra. Good enough for a demo,
-   not a claim that it is production-ready.
-4. Send it for real over Twilio's WhatsApp sandbox to a demo number.
-5. Write a row to `activity_log`.
+1. Poll `incidents` where `status = 'dispatched'`, skipping ones already in `activity_log`
+   for this agent.
+2. Ask an LLM to draft a short, reassuring status update directly in Hindi or Marathi
+   (whichever `incidents.language` says) in one call -- no separate translation model.
+   Good enough for a demo, not a claim that it is production-ready.
+3. Send it for real to the resident's phone. Originally built on Twilio's WhatsApp
+   sandbox, but the trial account had no live WhatsApp sending capability (pre-approved
+   Content Template sends failed even with Twilio's own example, and SMS required a
+   paid number). Switched to the Telegram Bot API instead -- same job (push a real
+   message to a real phone, no polling needed on the recipient's end), zero cost, no
+   account verification required.
+4. Write a row to `activity_log`.
 
-## Why it isn't implemented here
-
-Same reason as the other two agents. `main.py` in this folder is a stub only -- and we
-don't have Twilio sandbox credentials wired up yet either, on purpose.
+Run once: `python3 agents/bulletin/main.py`
+Limit (testing): `python3 agents/bulletin/main.py --limit 1`
+Poll loop: `python3 agents/bulletin/main.py --loop`

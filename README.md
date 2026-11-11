@@ -3,19 +3,13 @@
 PS-03 &middot; Multi-Agent Disaster Response Coordinator
 Team **Smooth Operator** &middot; AgentX Hackathon 2026
 
-## Status: pre-hackathon scaffold
+## Status: built
 
-This repo is **not** the hackathon project yet. It's repo structure, a database schema,
-seeded mock data, and a static UI preview of the dashboard &mdash; the "hour 0-4" work from
-our build plan (below), done ahead of time so we can start building the actual agents the
-moment the clock starts.
+All three agents -- Sentinel, Dispatch and Bulletin -- are implemented and tested against
+live seeded data, built during the official 24-hour window: **11 Nov 2026, 10:00 AM &rarr;
+12 Nov 2026, 10:00 AM IST**, per the AgentX Hackathon 2026 rules.
 
-**Sentinel, Dispatch and Bulletin are not implemented.** They'll be built live during the
-official 24-hour window: **11 Nov 2026, 10:00 AM &rarr; 12 Nov 2026, 10:00 AM IST**, per the
-AgentX Hackathon 2026 rules. The stub files under `agents/` say so explicitly, and every
-one of their functions raises `NotImplementedError`.
-
-Live preview of the dashboard mockup: **https://rakshak-ps03-smoothoperator.netlify.app**
+Live dashboard: **https://rakshak-ps03-smoothoperator.netlify.app**
 
 ## The problem
 
@@ -35,7 +29,9 @@ Three agents sharing one incident table, plus a dashboard a human actually contr
   resource (straight-line distance, not a claim of production routing). Larger assignments
   pause for a human to approve.
 - **Bulletin** &mdash; once a dispatch is confirmed, drafts a short update and sends it, for
-  real, over Twilio's WhatsApp sandbox, in Hindi or Marathi depending on the ward.
+  real, over Telegram, in Hindi or Marathi depending on the ward. (Built on Twilio's
+  WhatsApp sandbox first; switched to Telegram when the trial account turned out to have
+  no live WhatsApp sending capability -- same job, same real-send guarantee.)
 - **The dashboard** &mdash; an incident map (Leaflet + OpenStreetMap, no API key), a live list
   of who's been dispatched where, and a log of every action an agent took.
 
@@ -46,9 +42,9 @@ Three agents sharing one incident table, plus a dashboard a human actually contr
 - **The guardrail:** any dispatch assigning more than two resources, or an incident scored
   severity 4 or 5, is held until a human taps approve on the dashboard. Everything smaller
   auto-confirms, logged either way. See `dispatch_log.needs_human_approval` in the schema.
-- **What each agent calls:** an LLM API for severity scoring and translation, the Haversine
-  formula for distance (no paid maps API), Twilio's WhatsApp sandbox for real sends,
-  Leaflet + OpenStreetMap for the map, Postgres/SQLite for the shared table.
+- **What each agent calls:** Groq (LLM) for severity scoring and translation, the Haversine
+  formula for distance (no paid maps API), the Telegram Bot API for real sends, Leaflet +
+  OpenStreetMap for the map, Supabase/Postgres for the shared table.
 
 ## What we're deliberately not building
 
@@ -65,21 +61,11 @@ Three agents sharing one incident table, plus a dashboard a human actually contr
 db/schema.sql               the shared tables: incidents, volunteers, dispatch_log, activity_log
 db/seed_data.sql            generated mock data (Mumbai flood scenario), for once a real DB exists
 scripts/generate_mock_data.py   single source of truth for the mock data above and dashboard/data/mock.json
-agents/sentinel/             stub -- built hours 4-10 of the hackathon
-agents/dispatch/             stub -- built hours 10-16
-agents/bulletin/              stub -- built hours 16-20
-dashboard/                   static UI preview (what's deployed as the live link above)
+agents/sentinel/             built -- severity scoring + dedupe
+agents/dispatch/             built -- matching + the approval guardrail
+agents/bulletin/              built -- message drafting, translation, the real Telegram send
+dashboard/                   live UI, polling Supabase (what's deployed as the live link above)
 ```
-
-## Hour-by-hour plan for Nov 11&ndash;12
-
-| Hours | Work |
-|---|---|
-| 0&ndash;4h | Repo, DB schema, seed data, skeleton dashboard &mdash; **this is what's in this repo today.** |
-| 4&ndash;10h | Sentinel: ingestion, severity scoring, the dedupe check. |
-| 10&ndash;16h | Dispatch: matching logic, the approval guardrail, wired into the dashboard. |
-| 16&ndash;20h | Bulletin: message drafting, translation, the actual Twilio WhatsApp send. |
-| 20&ndash;24h | Fix what's broken, rehearse the demo twice, leave a buffer. |
 
 ## Team
 
