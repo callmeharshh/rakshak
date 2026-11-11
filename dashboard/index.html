@@ -41,6 +41,11 @@
   .vol-row .type { color: var(--muted); font-size: 11px; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .empty-log { color: var(--muted); font-size: 12.5px; font-style: italic; padding: 10px 0; }
+  .approval-card { background: #fff; border: 1px solid #FFD9C2; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12.5px; }
+  .approval-card .desc { margin: 4px 0 8px; }
+  .approve-btn { background: var(--orange); color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .approve-btn:hover { opacity: 0.9; }
+  .approve-btn:disabled { opacity: 0.5; cursor: default; }
   footer { padding: 16px 20px 28px; color: var(--muted); font-size: 12px; text-align: center; }
   footer a { color: var(--slate); }
 </style>
@@ -66,6 +71,11 @@
   <div id="map"></div>
 
   <div style="display:flex; flex-direction:column; gap:16px;">
+    <div class="panel" id="approvalsPanel" style="display:none;">
+      <h2>Needs your approval</h2>
+      <div id="approvalsList" class="scroll"></div>
+    </div>
+
     <div class="panel">
       <h2>Incidents <span style="font-weight:400;color:var(--muted)">(mock data)</span></h2>
       <div id="incidentList" class="scroll"></div>
@@ -109,8 +119,38 @@
 
   const markers = L.layerGroup().addTo(map);
 
-  function render(incidents, volunteers, activity) {
+  function approve(dispatchId, incidentId) {
+    const writeHeaders = { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+    Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/dispatch_log?id=eq.${dispatchId}`, {
+        method: 'PATCH', headers: writeHeaders,
+        body: JSON.stringify({ approved_by_human: true, approved_at: new Date().toISOString() }),
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/incidents?id=eq.${incidentId}`, {
+        method: 'PATCH', headers: writeHeaders, body: JSON.stringify({ status: 'dispatched' }),
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST', headers: writeHeaders,
+        body: JSON.stringify({ agent_name: 'human', incident_id: incidentId, action: 'approved_dispatch', details: 'approved from dashboard' }),
+      }),
+    ]).then(load);
+  }
+
+  function render(incidents, volunteers, activity, approvals) {
     markers.clearLayers();
+
+    const approvalsPanel = document.getElementById('approvalsPanel');
+    const approvalsList = document.getElementById('approvalsList');
+    approvalsPanel.style.display = approvals.length ? 'block' : 'none';
+    approvalsList.innerHTML = approvals.map(a => `
+      <div class="approval-card">
+        <div class="meta">
+          <span class="ward">${a.incidents.ward}</span>
+          <span class="badge dispatched" style="background:#D7263D">SEVERITY ${a.incidents.severity}</span>
+        </div>
+        <div class="desc">${a.incidents.description}<br>&rarr; ${a.volunteers.name} (${a.volunteers.resource_type.replace('_',' ')}), ${a.resources_committed} resources</div>
+        <button class="approve-btn" onclick="approve(${a.id}, ${a.incident_id})">Approve dispatch</button>
+      </div>`).join('');
 
     const list = document.getElementById('incidentList');
     list.innerHTML = '';
@@ -161,7 +201,8 @@
       fetch(`${SUPABASE_URL}/rest/v1/incidents?select=*`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/volunteers?select=*`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/activity_log?select=*&order=created_at.desc&limit=20`, { headers }).then(r => r.json()),
-    ]).then(([incidents, volunteers, activity]) => render(incidents, volunteers, activity))
+      fetch(`${SUPABASE_URL}/rest/v1/dispatch_log?needs_human_approval=eq.true&approved_by_human=eq.false&select=*,incidents(ward,description,severity),volunteers(name,resource_type)`, { headers }).then(r => r.json()),
+    ]).then(([incidents, volunteers, activity, approvals]) => render(incidents, volunteers, activity, approvals))
       .catch(err => console.error('load failed', err));
   }
 
