@@ -53,6 +53,7 @@
   .leaflet-popup-content b { color: #fff; }
   .leaflet-control-attribution { background: rgba(10,12,16,0.75) !important; color: #565E6C !important; }
   .leaflet-control-attribution a { color: #8B93A3 !important; }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9); }
 </style>
 </head>
 <body class="font-sans text-[#F3F5F8] min-h-screen">
@@ -143,8 +144,8 @@
   const agentColor = { sentinel: 'text-slate2 bg-slate2/15', dispatch: 'text-amber2 bg-amber2/15', bulletin: 'text-green2 bg-green2/15', human: 'text-brand bg-brand/15' };
 
   const map = L.map('map').setView([19.06, 72.88], 11);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
   // reads straight from Supabase's auto-generated REST API with the public anon key --
