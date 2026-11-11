@@ -28,18 +28,30 @@
   }
 
   header {
-    background: var(--navy); color: #fff; padding: 16px 24px;
+    background: linear-gradient(120deg, #0B1F3A 0%, #122A4F 55%, #1B3761 100%);
+    color: #fff; padding: 18px 28px;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    box-shadow: 0 2px 10px rgba(11,31,58,0.15);
   }
-  header .brand-row { display: flex; align-items: center; gap: 10px; }
-  header .brand { font-weight: 800; font-size: 21px; letter-spacing: 0.5px; }
+  header .brand-row { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--orange), #FF8C5A);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.35);
+  }
+  header .brand { font-weight: 800; font-size: 22px; letter-spacing: 0.3px; }
   header .tag { color: var(--mutedlight); font-size: 12.5px; margin-top: 2px; }
   .live-pill {
-    display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+    backdrop-filter: blur(6px);
   }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #34D399; animation: pulse 1.8s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #34D399; box-shadow: 0 0 0 0 rgba(52,211,153,0.6); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(52,211,153,0.5); }
+    70% { box-shadow: 0 0 0 6px rgba(52,211,153,0); }
+    100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+  }
 
   .banner {
     background: #EEF4FF; border-bottom: 1px solid #D5E3FF; color: #1E3A6E;
@@ -49,24 +61,31 @@
   .banner a { color: var(--slate); font-weight: 600; }
 
   .stats {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 24px 0;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 24px 0;
   }
   @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
   .stat-card {
-    background: var(--cardbg); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 16px;
+    background: var(--cardbg); border: 1px solid var(--border); border-left: 3px solid var(--accent, var(--navy));
+    border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 2px rgba(11,31,58,0.04), 0 8px 20px rgba(11,31,58,0.04);
+    transition: transform .15s ease, box-shadow .15s ease;
   }
-  .stat-card .num { font-size: 26px; font-weight: 800; line-height: 1.1; }
-  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(11,31,58,0.05), 0 14px 28px rgba(11,31,58,0.08); }
+  .stat-card .icon {
+    width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    background: var(--accent-bg, #EEF1F6); color: var(--accent, var(--navy)); font-size: 18px; flex-shrink: 0;
+  }
+  .stat-card .num { font-size: 25px; font-weight: 800; line-height: 1.1; }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 500; }
 
-  .layout { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 16px 24px 28px; align-items: start; }
+  .layout { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; padding: 18px 24px 32px; align-items: start; }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
-  #map { height: 560px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(11,31,58,0.06); }
+  #map { height: 560px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(11,31,58,0.05), 0 10px 30px rgba(11,31,58,0.07); }
 
   .panel {
-    background: var(--cardbg); border: 1px solid var(--border); border-radius: 12px;
-    padding: 16px; box-shadow: 0 1px 3px rgba(11,31,58,0.04);
+    background: var(--cardbg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; box-shadow: 0 1px 2px rgba(11,31,58,0.03), 0 8px 20px rgba(11,31,58,0.04);
   }
   .panel h2 {
     font-size: 13px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.4px;
@@ -78,50 +97,56 @@
   .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
   .incident-row {
-    background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-bottom: 7px; font-size: 13px;
-    border: 1px solid transparent; transition: border-color .15s;
+    background: var(--bg); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; font-size: 13px;
+    border: 1px solid transparent; transition: border-color .15s, transform .15s;
   }
-  .incident-row:hover { border-color: var(--border); }
+  .incident-row:hover { border-color: var(--border); transform: translateX(2px); }
   .incident-row .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
   .ward { font-weight: 700; }
   .badge {
-    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; color: #fff;
-    text-transform: uppercase; letter-spacing: .3px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 4px 9px 4px 7px;
+    border-radius: 20px; color: #fff; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap;
   }
+  .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.85); }
   .badge.new { background: #8A96A3; }
   .badge.triaged { background: var(--slate); }
   .badge.dispatched { background: var(--orange); }
   .badge.resolved { background: var(--green); }
-  .desc { color: var(--muted); line-height: 1.4; }
+  .desc { color: var(--muted); line-height: 1.45; }
 
   .vol-row {
     display: flex; justify-content: space-between; align-items: center; background: var(--bg);
-    border-radius: 8px; padding: 9px 12px; margin-bottom: 7px; font-size: 13px;
+    border-radius: 10px; padding: 10px 13px; margin-bottom: 8px; font-size: 13px;
+    transition: transform .15s;
   }
+  .vol-row:hover { transform: translateX(2px); }
   .vol-row .name { font-weight: 600; }
   .vol-row .type { color: var(--muted); font-size: 11.5px; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
   .empty-log { color: var(--muted); font-size: 13px; font-style: italic; padding: 10px 0; }
 
   .approval-card {
-    background: #FFF8F3; border: 1px solid #FFDCC2; border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 13px;
+    background: linear-gradient(135deg, #FFF8F3, #FFF2E8); border: 1px solid #FFDCC2; border-left: 3px solid var(--orange);
+    border-radius: 12px; padding: 13px; margin-bottom: 10px; font-size: 13px;
   }
   .approval-card .desc { margin: 5px 0 10px; }
   .approve-btn {
-    background: var(--orange); color: #fff; border: none; border-radius: 7px; padding: 7px 14px;
-    font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+    background: linear-gradient(135deg, var(--orange), #FF8C5A); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+    box-shadow: 0 2px 8px rgba(255,107,53,0.3); transition: transform .12s, box-shadow .12s;
   }
-  .approve-btn:hover { background: #E85A28; }
+  .approve-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,107,53,0.4); }
   .approve-btn:disabled { opacity: 0.5; cursor: default; }
 
-  footer { padding: 16px 24px 28px; color: var(--muted); font-size: 12px; text-align: center; }
-  footer a { color: var(--slate); }
+  footer { padding: 20px 24px 32px; color: var(--muted); font-size: 12px; text-align: center; }
+  footer a { color: var(--slate); font-weight: 600; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand-row">
+    <div class="brand-mark">R</div>
     <div>
       <div class="brand">RAKSHAK</div>
       <div class="tag">Smooth Operator &middot; PS-03 &middot; AgentX Hackathon 2026</div>
@@ -217,11 +242,17 @@
       dispatched: live.filter(i => i.status === 'dispatched').length,
       resolved: live.filter(i => i.status === 'resolved').length,
     };
-    document.getElementById('statsRow').innerHTML = `
-      <div class="stat-card"><div class="num">${counts.total}</div><div class="label">Total incidents</div></div>
-      <div class="stat-card"><div class="num" style="color:var(--slate)">${counts.active}</div><div class="label">Awaiting action</div></div>
-      <div class="stat-card"><div class="num" style="color:var(--orange)">${counts.dispatched}</div><div class="label">Dispatched</div></div>
-      <div class="stat-card"><div class="num" style="color:var(--green)">${counts.resolved}</div><div class="label">Resolved</div></div>`;
+    const cards = [
+      { icon: '&#9888;', color: 'var(--navy)', bg: '#EEF1F6', n: counts.total, label: 'Total incidents' },
+      { icon: '&#9203;', color: 'var(--slate)', bg: '#E9EFFA', n: counts.active, label: 'Awaiting action' },
+      { icon: '&#128664;', color: 'var(--orange)', bg: '#FFF0E8', n: counts.dispatched, label: 'Dispatched' },
+      { icon: '&#10003;', color: 'var(--green)', bg: '#E8F7EE', n: counts.resolved, label: 'Resolved' },
+    ];
+    document.getElementById('statsRow').innerHTML = cards.map(c => `
+      <div class="stat-card" style="--accent:${c.color}; --accent-bg:${c.bg}">
+        <div class="icon">${c.icon}</div>
+        <div><div class="num" style="color:${c.color}">${c.n}</div><div class="label">${c.label}</div></div>
+      </div>`).join('');
   }
 
   function render(incidents, volunteers, activity, approvals) {
@@ -247,8 +278,13 @@
     incidents.forEach(inc => {
       if (inc.duplicate_of) return; // collapsed into the incident it duplicates
       shown++;
+      if (inc.severity >= 4) {
+        L.circleMarker([inc.lat, inc.lon], {
+          radius: 14, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.12, weight: 0
+        }).addTo(markers);
+      }
       L.circleMarker([inc.lat, inc.lon], {
-        radius: 7, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.85, weight: 1.5
+        radius: 7, color: '#fff', fillColor: sevColor(inc.severity), fillOpacity: 0.95, weight: 2
       }).addTo(markers).bindPopup(
         `<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`
       );

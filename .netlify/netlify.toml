@@ -7,7 +7,7 @@ redirects = []
 [functions."*"]
 
 [build]
-publish = "/private/tmp/claude-501/-Users-harsh-orca-workspaces-Agentx-Hackathon-Hackathon/324fb419-7ca1-4052-8911-7b91dcf9b4ed/scratchpad/rakshak-repo"
+publish = "/Users/harsh/rakshak"
 publishOrigin = "default"
 
 [build.environment]
