@@ -5,204 +5,259 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>RAKSHAK — Live Response Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.js"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
-        colors: {
-          bg: '#08090D', glass: 'rgba(255,255,255,0.045)', hairline: 'rgba(255,255,255,0.09)',
-          dim: '#8B93A3', dimmer: '#565E6C',
-          brand: '#FF6B35', slate2: '#7C93B8', green2: '#34D399', red2: '#F87171', amber2: '#FBBF24',
-        },
-      },
-    },
-  };
-</script>
 <style>
-  html, body { background: #08090D; }
+  /* palette: storm-blue ground (not generic near-black), terracotta signal (brand), muted gold for resolved
+     instead of the stock neon-green "AI dashboard" accent. layout: one dominant hero number + inline
+     stat chips, not four identical bordered tiles; card chrome used only where it marks something urgent. */
+  :root {
+    --bg: #0D1321; --bg2: #121A2E; --ink: #EDEFF4; --ink-dim: #8D96AC; --ink-faint: #565F78;
+    --rule: rgba(237,239,244,0.09);
+    --brand: #E8663D; --brand-soft: rgba(232,102,61,0.14);
+    --gold: #D9A441; --gold-soft: rgba(217,164,65,0.14);
+    --steel: #6E88B5; --steel-soft: rgba(110,136,181,0.14);
+    --coral: #E6604F; --coral-soft: rgba(230,96,79,0.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
   body {
-    background-image:
-      radial-gradient(1200px 560px at 10% -12%, rgba(255,107,53,0.16), transparent 60%),
-      radial-gradient(1000px 500px at 112% 6%, rgba(52,211,153,0.08), transparent 55%);
+    margin: 0; color: var(--ink); font-family: 'Inter', -apple-system, sans-serif;
+    background-image: radial-gradient(1400px 700px at 20% -15%, rgba(232,102,61,0.09), transparent 60%);
     background-attachment: fixed;
   }
-  /* spring-ish easing used everywhere motion happens, per Apple's critically-damped default */
+  .display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
   :root { --spring: cubic-bezier(.22,1,.36,1); }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  .anim-in { animation: fadeUp .6s var(--spring) both; }
-  .anim-fade { animation: fadeIn .35s var(--spring) both; }
-  .d1 { animation-delay: .06s } .d2 { animation-delay: .12s } .d3 { animation-delay: .18s } .d4 { animation-delay: .24s }
+  .in { animation: rise .6s var(--spring) both; }
+  .fade { animation: fadeIn .35s var(--spring) both; }
 
-  .glass {
-    background: rgba(255,255,255,0.045);
-    backdrop-filter: blur(22px) saturate(160%);
-    -webkit-backdrop-filter: blur(22px) saturate(160%);
-    border: 1px solid rgba(255,255,255,0.09);
-    border-top-color: rgba(255,255,255,0.16);
-  }
-  .glass-hover { transition: transform .35s var(--spring), border-color .35s var(--spring), background .35s var(--spring); }
-  .glass-hover:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.065); }
-
-  .pulse-dot { animation: pulseRing 1.8s ease-in-out infinite; }
-  @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); } 70% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
-  .spin-once { transition: transform .7s var(--spring); }
-  .spin-once.go { transform: rotate(360deg); }
-
-  .scroll::-webkit-scrollbar { width: 6px; }
-  .scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 4px; }
-
-  #approvals { transition: max-height .45s var(--spring), opacity .35s var(--spring), padding .45s var(--spring), margin .45s var(--spring), border-width .45s var(--spring); overflow: hidden; max-height: 600px; opacity: 1; }
-  #approvals.collapsed { max-height: 0; opacity: 0; padding: 0 !important; margin: 0 !important; border-width: 0 !important; }
-
+  a { color: inherit; }
   .press { transition: transform .15s var(--spring); }
   .press:active { transform: scale(.96); }
 
-  .leaflet-popup-content-wrapper { background: #161A22; color: #F3F5F8; border-radius: 10px; }
-  .leaflet-popup-tip { background: #161A22; }
-  .leaflet-popup-content b { color: #fff; }
-  .leaflet-control-attribution { background: rgba(8,9,13,0.75) !important; color: #565E6C !important; }
-  .leaflet-control-attribution a { color: #8B93A3 !important; }
-  .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9); }
-
-  input, textarea, select {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #F3F5F8;
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 22px 32px 0; max-width: 1360px; margin: 0 auto;
   }
-  input::placeholder, textarea::placeholder { color: #565E6C; }
-  input:focus, textarea:focus, select:focus { outline: none; border-color: rgba(255,107,53,0.5); background: rgba(255,255,255,0.06); }
+  .brand-row { display: flex; align-items: center; gap: 12px; }
+  .mark {
+    width: 38px; height: 38px; border-radius: 9px; background: linear-gradient(145deg, var(--brand), #F08A5D);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1A0B04;
+  }
+  .wordmark { font-weight: 700; font-size: 21px; letter-spacing: -0.01em; }
+  .eyebrow { color: var(--ink-dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1px; }
+  .live {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--ink-dim);
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: pulseRing 1.8s ease-in-out infinite; }
+  @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(217,164,65,.5); } 70% { box-shadow: 0 0 0 7px rgba(217,164,65,0); } 100% { box-shadow: 0 0 0 0 rgba(217,164,65,0); } }
+  .spin { display: inline-block; transition: transform .7s var(--spring); }
+  .spin.go { transform: rotate(360deg); }
 
-  #toasts { position: fixed; bottom: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
-  .toast { animation: toastIn .4s var(--spring) both; }
+  .ticker { padding: 10px 32px; max-width: 1360px; margin: 18px auto 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-dim); display: flex; align-items: center; gap: 8px; }
+
+  .banner { max-width: 1360px; margin: 0 auto; padding: 12px 32px; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+  .banner b { color: var(--ink); }
+  .banner a { color: var(--brand); font-weight: 600; text-decoration: none; }
+
+  /* ---- hero: one dominant number, not four equal tiles ---- */
+  .hero {
+    max-width: 1360px; margin: 18px auto 0; padding: 0 32px;
+    display: grid; grid-template-columns: auto 1fr; align-items: end; gap: 28px;
+  }
+  @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } }
+  .hero-num { font-size: clamp(3rem, 7vw, 5.2rem); font-weight: 700; line-height: .95; letter-spacing: -0.03em; }
+  .hero-label { color: var(--ink-dim); font-size: 13px; margin-top: 6px; }
+  .chips { display: flex; gap: 28px; flex-wrap: wrap; padding-bottom: 10px; }
+  .chip .n { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .chip .l { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+  /* ---- try-it band: one unified strip split by a divider, not two separate cards ---- */
+  .tryit {
+    max-width: 1360px; margin: 28px auto 0; padding: 22px 32px; background: var(--bg2); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  }
+  @media (max-width: 860px) { .tryit { grid-template-columns: 1fr; } }
+  .tryit > div:first-child { border-right: 1px solid var(--rule); padding-right: 32px; }
+  @media (max-width: 860px) { .tryit > div:first-child { border-right: none; border-bottom: 1px solid var(--rule); padding-right: 0; padding-bottom: 22px; } }
+  .tryit h2 { font-family: 'Space Grotesk'; font-size: 15px; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+  .tryit p { color: var(--ink-dim); font-size: 13.5px; line-height: 1.55; margin: 0 0 14px; max-width: 46ch; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; padding: 9px 16px;
+    border-radius: 8px; border: none; cursor: pointer; font-family: inherit; text-decoration: none;
+  }
+  .btn-gold { background: var(--gold); color: #241A05; }
+  .btn-brand { background: var(--brand); color: #1A0B04; }
+  input, select {
+    background: rgba(237,239,244,0.05); border: 1px solid var(--rule); color: var(--ink); border-radius: 8px;
+    padding: 9px 12px; font-size: 13.5px; font-family: inherit;
+  }
+  input::placeholder { color: var(--ink-faint); }
+  input:focus, select:focus { outline: none; border-color: var(--brand); }
+
+  .layout { max-width: 1360px; margin: 0 auto; padding: 24px 32px 40px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  #map { height: 580px; border-radius: 14px; border: 1px solid var(--rule); }
+  .leaflet-popup-content-wrapper { background: var(--bg2); color: var(--ink); border-radius: 8px; }
+  .leaflet-popup-tip { background: var(--bg2); }
+  .leaflet-control-attribution { background: rgba(13,19,33,0.8) !important; color: var(--ink-faint) !important; }
+  .leaflet-control-attribution a { color: var(--ink-dim) !important; }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(190deg) brightness(0.9) contrast(0.92) saturate(1.1); }
+
+  /* only the urgent panel gets strong card chrome -- everything else is plain rows + a label */
+  .urgent-card {
+    background: var(--brand-soft); border: 1px solid rgba(232,102,61,0.35); border-radius: 14px; padding: 16px;
+    transition: max-height .45s var(--spring), opacity .35s var(--spring), padding .45s var(--spring), margin .45s var(--spring), border-width .45s var(--spring);
+    overflow: hidden; max-height: 600px; opacity: 1;
+  }
+  .urgent-card.collapsed { max-height: 0; opacity: 0; padding: 0 !important; margin: 0 !important; border-width: 0 !important; }
+
+  .list-block h2 {
+    font-family: 'Space Grotesk'; font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--ink-dim); margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 10px; border-bottom: 1px solid var(--rule);
+  }
+  .list-block h2 .count { font-family: 'JetBrains Mono'; color: var(--ink); font-size: 11.5px; font-weight: 500; }
+  .scroll { max-height: 230px; overflow-y: auto; }
+  .scroll::-webkit-scrollbar { width: 5px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
+
+  .row { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .row-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .ward { font-weight: 600; }
+  .desc { color: var(--ink-dim); line-height: 1.5; }
+  .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+  .vol-row { display: flex; justify-content: space-between; align-items: center; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .empty { color: var(--ink-faint); font-size: 13px; font-style: italic; padding: 8px 0; }
+
+  .log-row { display: flex; gap: 10px; }
+  .agent-tag { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; flex-shrink: 0; margin-top: 2px; }
+
+  footer { max-width: 1360px; margin: 0 auto; padding: 20px 32px 36px; text-align: center; color: var(--ink-faint); font-size: 12px; }
+  footer a { color: var(--ink-dim); font-weight: 600; text-decoration: none; }
+
+  #toasts { position: fixed; bottom: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
+  .toast {
+    animation: toastIn .4s var(--spring) both; background: var(--bg2); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 11px 13px; font-size: 13px; display: flex; gap: 9px; align-items: flex-start; box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  }
 </style>
 </head>
-<body class="font-sans text-[#F3F5F8] min-h-screen">
+<body>
 
 <div id="toasts"></div>
 
-<header class="anim-in flex items-center justify-between gap-3 px-6 sm:px-8 py-5 flex-wrap">
-  <div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-orange-300 flex items-center justify-center font-black text-[#140A05] shadow-lg shadow-brand/30">R</div>
+<header class="in">
+  <div class="brand-row">
+    <div class="mark">R</div>
     <div>
-      <div class="font-extrabold text-xl tracking-tight">RAKSHAK</div>
-      <div class="text-[11px] font-semibold uppercase tracking-wider text-dim">Smooth Operator &middot; PS-03 &middot; AgentX 2026</div>
+      <div class="wordmark display">RAKSHAK</div>
+      <div class="eyebrow">Smooth Operator &middot; PS-03 &middot; AgentX 2026</div>
     </div>
   </div>
-  <div class="flex items-center gap-2 glass rounded-full pl-2.5 pr-3.5 py-1.5 text-xs font-semibold">
-    <span class="w-1.5 h-1.5 rounded-full bg-green2 pulse-dot"></span> Live
-    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-dimmer spin-once" id="refreshIcon"></i>
-  </div>
+  <div class="live"><span class="live-dot"></span> Live <i data-lucide="refresh-cw" class="spin" style="width:14px;height:14px" id="refreshIcon"></i></div>
 </header>
 
-<div class="flex items-center gap-2 px-6 sm:px-8 py-2.5 border-y border-hairline bg-white/[0.02] text-xs text-dim">
-  <i data-lucide="radio" class="w-3.5 h-3.5 text-green2 shrink-0"></i>
-  <span>Sentinel triaging &middot; Dispatch matching volunteers &middot; Bulletin notifying residents on Telegram &middot; human-approval guardrail active</span>
+<div class="ticker in">
+  <i data-lucide="radio" style="width:14px;height:14px;color:var(--gold)"></i>
+  Sentinel triaging &middot; Dispatch matching volunteers &middot; Bulletin notifying residents on Telegram &middot; human-approval guardrail active
 </div>
 
-<div class="px-6 sm:px-8 py-2.5 bg-white/[0.015] border-b border-hairline text-[12.5px] text-dim leading-relaxed">
-  <b class="text-[#F3F5F8]">What this is:</b> a live dashboard reading straight from Supabase. Sentinel, Dispatch and Bulletin
-  are real agents built during the official 24-hour window, <b class="text-[#F3F5F8]">11&ndash;12 Nov 2026</b> &mdash; they triage
-  incoming reports, match and dispatch volunteers, and notify affected residents over Telegram. Incident and volunteer data is
+<div class="banner">
+  <b>What this is:</b> a live dashboard reading straight from Supabase. Sentinel, Dispatch and Bulletin are real
+  agents built during the official 24-hour window, <b>11&ndash;12 Nov 2026</b> &mdash; they triage incoming reports,
+  match and dispatch volunteers, and notify affected residents over Telegram. Incident and volunteer data is
   fabricated/seeded for the demo, per the hackathon rules (no real personal data).
-  <a href="https://github.com/callmeharshh/rakshak" class="text-brand font-semibold hover:underline">github.com/callmeharshh/rakshak</a>
+  <a href="https://github.com/callmeharshh/rakshak">github.com/callmeharshh/rakshak</a>
 </div>
 
-<div id="statsRow" class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 px-6 sm:px-8 pt-6"></div>
-
-<!-- Try it yourself -->
-<div class="grid lg:grid-cols-2 gap-4 px-6 sm:px-8 pt-5 anim-in d2">
-  <div class="glass glass-hover rounded-2xl p-5 shadow-2xl shadow-black/30">
-    <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-1 flex items-center gap-1.5">
-      <i data-lucide="send" class="w-3.5 h-3.5 text-green2"></i> Try it yourself &mdash; on Telegram
-    </h2>
-    <p class="text-dim text-[13px] leading-relaxed mb-3.5">
-      Message our live bot with a one-line disaster report. Sentinel, Dispatch and Bulletin will
-      actually triage and dispatch it &mdash; and the bot replies to <b class="text-[#F3F5F8]">your</b> phone the moment help is confirmed.
-    </p>
-    <a href="https://t.me/RakshakBulletinBot" target="_blank" rel="noopener"
-       class="press inline-flex items-center gap-2 bg-gradient-to-br from-green2 to-emerald-400 text-[#06120C] text-sm font-bold px-4 py-2.5 rounded-lg shadow-lg shadow-green2/25 hover:-translate-y-0.5 transition-transform">
-      <i data-lucide="message-circle" class="w-4 h-4"></i> Open @RakshakBulletinBot
-    </a>
+<div class="hero in">
+  <div>
+    <div class="hero-num display tnum" id="heroNum">0</div>
+    <div class="hero-label">Total incidents tracked</div>
   </div>
+  <div class="chips">
+    <div class="chip"><div class="n tnum" style="color:var(--steel)"><span class="dot" style="background:var(--steel)"></span><span id="statActive">0</span></div><div class="l">Awaiting action</div></div>
+    <div class="chip"><div class="n tnum" style="color:var(--brand)"><span class="dot" style="background:var(--brand)"></span><span id="statDispatched">0</span></div><div class="l">Dispatched</div></div>
+    <div class="chip"><div class="n tnum" style="color:var(--gold)"><span class="dot" style="background:var(--gold)"></span><span id="statResolved">0</span></div><div class="l">Resolved</div></div>
+  </div>
+</div>
 
-  <div class="glass glass-hover rounded-2xl p-5 shadow-2xl shadow-black/30">
-    <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-1 flex items-center gap-1.5">
-      <i data-lucide="zap" class="w-3.5 h-3.5 text-brand"></i> Simulate an incident
-    </h2>
-    <p class="text-dim text-[13px] leading-relaxed mb-3">No Telegram needed &mdash; inject a report straight into the pipeline and watch it flow through the map and panels below.</p>
-    <form id="simForm" class="flex flex-col sm:flex-row gap-2">
-      <select id="simWard" class="rounded-lg px-3 py-2 text-sm flex-shrink-0"></select>
-      <input id="simDesc" type="text" required placeholder="e.g. Water entering ground floor, two children inside"
-             class="rounded-lg px-3 py-2 text-sm flex-1 min-w-0" />
-      <button type="submit" class="press bg-gradient-to-br from-brand to-orange-300 text-[#140A05] text-sm font-bold px-4 py-2 rounded-lg shadow-lg shadow-brand/25 hover:-translate-y-0.5 transition-transform flex items-center gap-1.5 justify-center shrink-0">
-        <i data-lucide="send-horizontal" class="w-4 h-4"></i> Submit
-      </button>
+<div class="tryit in">
+  <div>
+    <h2><i data-lucide="send" style="width:15px;height:15px;color:var(--gold)"></i> Try it yourself &mdash; on Telegram</h2>
+    <p>Message our live bot with a one-line disaster report. Sentinel, Dispatch and Bulletin actually triage and dispatch it &mdash; the bot replies to <b style="color:var(--ink)">your</b> phone once help is confirmed.</p>
+    <a href="https://t.me/RakshakBulletinBot" target="_blank" rel="noopener" class="btn btn-gold press"><i data-lucide="message-circle" style="width:15px;height:15px"></i> Open @RakshakBulletinBot</a>
+  </div>
+  <div>
+    <h2><i data-lucide="zap" style="width:15px;height:15px;color:var(--brand)"></i> Simulate an incident</h2>
+    <p>No Telegram needed &mdash; inject a report straight into the pipeline and watch it flow through the map below.</p>
+    <form id="simForm" style="display:flex; gap:8px; flex-wrap:wrap;">
+      <select id="simWard"></select>
+      <input id="simDesc" type="text" required placeholder="e.g. Water entering ground floor, two children inside" style="flex:1; min-width:220px;" />
+      <button type="submit" class="btn btn-brand press"><i data-lucide="send-horizontal" style="width:15px;height:15px"></i> Submit</button>
     </form>
   </div>
 </div>
 
-<div class="grid lg:grid-cols-[2fr_1fr] gap-4 px-6 sm:px-8 py-5 anim-in d3 items-start">
-  <div id="map" class="h-[580px] rounded-2xl border border-hairline shadow-2xl shadow-black/40"></div>
+<div class="layout in">
+  <div id="map"></div>
 
-  <div class="flex flex-col gap-4">
-    <div id="approvals" class="collapsed glass border-brand/25 rounded-2xl p-4 shadow-xl shadow-black/20">
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center gap-1.5">
-        <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-brand"></i> Needs your approval
-      </h2>
-      <div id="approvalsList" class="scroll max-h-[230px] overflow-y-auto"></div>
-    </div>
-
-    <div class="glass rounded-2xl p-4 shadow-xl shadow-black/20">
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center justify-between">
-        <span class="flex items-center gap-1.5"><i data-lucide="siren" class="w-3.5 h-3.5"></i> Incidents</span>
-        <span id="incidentCount" class="bg-white/[0.08] text-[#F3F5F8] rounded-full px-2.5 py-0.5 text-[11px] font-mono">0</span>
-      </h2>
-      <div id="incidentList" class="scroll max-h-[230px] overflow-y-auto"></div>
-    </div>
-
-    <div class="glass rounded-2xl p-4 shadow-xl shadow-black/20">
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center justify-between">
-        <span class="flex items-center gap-1.5"><i data-lucide="users" class="w-3.5 h-3.5"></i> Volunteers &amp; resources</span>
-        <span id="volunteerCount" class="bg-white/[0.08] text-[#F3F5F8] rounded-full px-2.5 py-0.5 text-[11px] font-mono">0</span>
-      </h2>
-      <div id="volunteerList" class="scroll max-h-[230px] overflow-y-auto"></div>
-    </div>
-
-    <div class="glass rounded-2xl p-4 shadow-xl shadow-black/20">
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-dim mb-3 flex items-center gap-1.5">
-        <i data-lucide="brain-circuit" class="w-3.5 h-3.5"></i> Watch the AI decide
-      </h2>
-      <div id="activityLog" class="scroll max-h-[230px] overflow-y-auto">
-        <div class="text-dimmer text-[13px] italic py-2">No agent activity yet.</div>
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div id="approvals" class="urgent-card collapsed">
+      <div style="font-family:'Space Grotesk'; font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.07em; color:var(--brand); margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+        <i data-lucide="shield-alert" style="width:14px;height:14px"></i> Needs your approval
       </div>
+      <div id="approvalsList" class="scroll"></div>
+    </div>
+
+    <div class="list-block">
+      <h2><span><i data-lucide="siren" style="width:13px;height:13px;vertical-align:-2px"></i> Incidents</span><span class="count" id="incidentCount">0</span></h2>
+      <div id="incidentList" class="scroll"></div>
+    </div>
+
+    <div class="list-block">
+      <h2><span><i data-lucide="users" style="width:13px;height:13px;vertical-align:-2px"></i> Volunteers &amp; resources</span><span class="count" id="volunteerCount">0</span></h2>
+      <div id="volunteerList" class="scroll"></div>
+    </div>
+
+    <div class="list-block">
+      <h2><span><i data-lucide="brain-circuit" style="width:13px;height:13px;vertical-align:-2px"></i> Watch the AI decide</span></h2>
+      <div id="activityLog" class="scroll"><div class="empty">No agent activity yet.</div></div>
     </div>
   </div>
 </div>
 
-<footer class="px-6 sm:px-8 py-8 text-center text-dimmer text-xs">
-  RAKSHAK &middot; PS-03, AgentX Hackathon 2026. Repo:
-  <a href="https://github.com/callmeharshh/rakshak" class="text-dim font-semibold hover:text-[#F3F5F8]">github.com/callmeharshh/rakshak</a>
+<footer>
+  RAKSHAK &middot; PS-03, AgentX Hackathon 2026. Repo: <a href="https://github.com/callmeharshh/rakshak">github.com/callmeharshh/rakshak</a>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
   lucide.createIcons();
 
-  const sevColor = (s) => s >= 4 ? '#F87171' : s === 3 ? '#FF6B35' : '#FBBF24';
+  const sevColor = (s) => s >= 4 ? '#E6604F' : s === 3 ? '#E8663D' : '#D9A441';
   const statusLabel = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const statusClasses = {
-    new: 'bg-slate2/15 text-slate2', triaged: 'bg-amber2/15 text-amber2',
-    dispatched: 'bg-brand/15 text-brand', resolved: 'bg-green2/15 text-green2',
+  const statusStyle = {
+    new: 'color:var(--steel);background:var(--steel-soft)', triaged: 'color:var(--gold);background:var(--gold-soft)',
+    dispatched: 'color:var(--brand);background:var(--brand-soft)', resolved: 'color:#8FD4B8;background:rgba(143,212,184,0.14)',
   };
-  const agentIcon = { sentinel: 'eye', dispatch: 'truck', bulletin: 'send', human: 'user-check', intake: 'message-circle' };
-  const agentColor = { sentinel: 'text-slate2 bg-slate2/15', dispatch: 'text-amber2 bg-amber2/15', bulletin: 'text-green2 bg-green2/15', human: 'text-brand bg-brand/15', intake: 'text-green2 bg-green2/15' };
+  const agentStyle = {
+    sentinel: ['eye', 'color:var(--steel);background:var(--steel-soft)'], dispatch: ['truck', 'color:var(--gold);background:var(--gold-soft)'],
+    bulletin: ['send', 'color:#8FD4B8;background:rgba(143,212,184,0.14)'], human: ['user-check', 'color:var(--brand);background:var(--brand-soft)'],
+    intake: ['message-circle', 'color:#8FD4B8;background:rgba(143,212,184,0.14)'],
+  };
 
-  // mirrors agents/common.py WARDS -- kept in sync by hand, small fixed list, not worth a build step for
   const WARDS = {
     Kurla: [19.0728, 72.8826], Sion: [19.0448, 72.8626], Dharavi: [19.0411, 72.8514],
     Chembur: [19.0522, 72.9005], Bandra: [19.0596, 72.8295], Andheri: [19.1136, 72.8697],
@@ -211,42 +266,29 @@
   document.getElementById('simWard').innerHTML = Object.keys(WARDS).map(w => `<option value="${w}">${w}</option>`).join('');
 
   const map = L.map('map').setView([19.06, 72.88], 11);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
-  // reads straight from Supabase's auto-generated REST API with the public anon key --
-  // safe to expose client-side, that's what the anon key is for. Polls every 5s so the
-  // dashboard reflects whatever Sentinel/Dispatch/Bulletin just wrote, no backend of our own.
   const SUPABASE_URL = 'https://vlvibwcgsbvwuewvmmtw.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_j7rNFGv-Hle9c7rhAvlpDQ_Vrb1LgwA';
   const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
   const markers = L.layerGroup().addTo(map);
   let lastSeenActivityId = null;
 
-  function toast(icon, color, text) {
+  function toast(icon, style, text) {
     const el = document.createElement('div');
-    el.className = 'toast glass rounded-xl p-3 shadow-2xl shadow-black/40 flex items-start gap-2.5 text-[13px]';
-    el.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 ${color} mt-0.5 shrink-0"></i><span class="text-[#F3F5F8]">${text}</span>`;
+    el.className = 'toast';
+    el.innerHTML = `<i data-lucide="${icon}" style="width:15px;height:15px;${style};border-radius:5px;padding:3px;flex-shrink:0" ></i><span>${text}</span>`;
     document.getElementById('toasts').appendChild(el);
     lucide.createIcons();
-    setTimeout(() => { el.style.transition = 'opacity .4s, transform .4s'; el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; setTimeout(() => el.remove(), 400); }, 5000);
+    setTimeout(() => { el.style.transition = 'opacity .4s, transform .4s'; el.style.opacity = '0'; el.style.transform = 'translateX(16px)'; setTimeout(() => el.remove(), 400); }, 5000);
   }
 
   function approve(dispatchId, incidentId) {
-    const writeHeaders = { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+    const wh = { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
     Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/dispatch_log?id=eq.${dispatchId}`, {
-        method: 'PATCH', headers: writeHeaders,
-        body: JSON.stringify({ approved_by_human: true, approved_at: new Date().toISOString() }),
-      }),
-      fetch(`${SUPABASE_URL}/rest/v1/incidents?id=eq.${incidentId}`, {
-        method: 'PATCH', headers: writeHeaders, body: JSON.stringify({ status: 'dispatched' }),
-      }),
-      fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-        method: 'POST', headers: writeHeaders,
-        body: JSON.stringify({ agent_name: 'human', incident_id: incidentId, action: 'approved_dispatch', details: 'approved from dashboard' }),
-      }),
+      fetch(`${SUPABASE_URL}/rest/v1/dispatch_log?id=eq.${dispatchId}`, { method: 'PATCH', headers: wh, body: JSON.stringify({ approved_by_human: true, approved_at: new Date().toISOString() }) }),
+      fetch(`${SUPABASE_URL}/rest/v1/incidents?id=eq.${incidentId}`, { method: 'PATCH', headers: wh, body: JSON.stringify({ status: 'dispatched' }) }),
+      fetch(`${SUPABASE_URL}/rest/v1/activity_log`, { method: 'POST', headers: wh, body: JSON.stringify({ agent_name: 'human', incident_id: incidentId, action: 'approved_dispatch', details: 'approved from dashboard' }) }),
     ]).then(load);
   }
 
@@ -261,23 +303,24 @@
       body: JSON.stringify({ source: 'dashboard_demo', ward, lat, lon, description: desc, need_type: 'rescue', language: 'hi', status: 'new' }),
     }).then(() => {
       document.getElementById('simDesc').value = '';
-      toast('zap', 'text-brand', `Incident submitted in <b>${ward}</b> &mdash; Sentinel will triage it within seconds.`);
+      toast('zap', 'color:var(--brand);background:var(--brand-soft)', `Incident submitted in <b>${ward}</b> &mdash; Sentinel will triage it within seconds.`);
       load();
     });
   });
 
-  function animateCount(el, duration) {
-    const target = Number(el.dataset.target);
+  function animateCount(el, target, duration) {
     const start = performance.now();
+    const from = Number(el.textContent) || 0;
     function tick(now) {
       const p = Math.min(1, (now - start) / duration);
-      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      el.textContent = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
   }
 
-  function renderStats(incidents) {
+  function render(incidents, volunteers, activity, approvals) {
+    markers.clearLayers();
     const live = incidents.filter(i => !i.duplicate_of);
     const counts = {
       total: live.length,
@@ -285,40 +328,18 @@
       dispatched: live.filter(i => i.status === 'dispatched').length,
       resolved: live.filter(i => i.status === 'resolved').length,
     };
-    const cards = [
-      { icon: 'layout-grid', color: 'text-[#F3F5F8]', bg: 'bg-white/[0.08]', n: counts.total, label: 'Total incidents', delay: 'd1' },
-      { icon: 'clock', color: 'text-slate2', bg: 'bg-slate2/15', n: counts.active, label: 'Awaiting action', delay: 'd2' },
-      { icon: 'truck', color: 'text-brand', bg: 'bg-brand/15', n: counts.dispatched, label: 'Dispatched', delay: 'd3' },
-      { icon: 'check-circle-2', color: 'text-green2', bg: 'bg-green2/15', n: counts.resolved, label: 'Resolved', delay: 'd4' },
-    ];
-    const row = document.getElementById('statsRow');
-    const firstRender = !row.childElementCount;
-    row.innerHTML = cards.map(c => `
-      <div class="anim-in ${c.delay} glass glass-hover rounded-2xl p-5 shadow-xl shadow-black/20">
-        <div class="w-9 h-9 rounded-lg ${c.bg} ${c.color} flex items-center justify-center mb-4">
-          <i data-lucide="${c.icon}" class="w-4 h-4"></i>
-        </div>
-        <div class="text-3xl font-extrabold tracking-[-0.02em] font-mono tabular-nums" data-target="${c.n}">0</div>
-        <div class="text-xs text-dim mt-1.5 font-medium">${c.label}</div>
-      </div>`).join('');
-    lucide.createIcons();
-    row.querySelectorAll('[data-target]').forEach(el => animateCount(el, firstRender ? 500 : 300));
-  }
-
-  function render(incidents, volunteers, activity, approvals) {
-    markers.clearLayers();
-    renderStats(incidents);
+    animateCount(document.getElementById('heroNum'), counts.total, 500);
+    animateCount(document.getElementById('statActive'), counts.active, 350);
+    animateCount(document.getElementById('statDispatched'), counts.dispatched, 350);
+    animateCount(document.getElementById('statResolved'), counts.resolved, 350);
 
     const approvalsEl = document.getElementById('approvals');
     approvalsEl.classList.toggle('collapsed', approvals.length === 0);
     document.getElementById('approvalsList').innerHTML = approvals.map(a => `
-      <div class="anim-fade bg-gradient-to-br from-brand/10 to-brand/[0.02] border border-brand/25 border-l-[3px] border-l-brand rounded-xl p-3.5 mb-2.5 text-[13px]">
-        <div class="flex justify-between items-center mb-1">
-          <span class="font-bold">${a.incidents.ward}</span>
-          <span class="bg-red2/15 text-red2 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">Severity ${a.incidents.severity}</span>
-        </div>
-        <div class="text-dim mb-2.5 leading-relaxed">${a.incidents.description}<br>&rarr; ${a.volunteers.name} (${a.volunteers.resource_type.replace('_',' ')}), ${a.resources_committed} resources</div>
-        <button onclick="approve(${a.id}, ${a.incident_id})" class="press bg-gradient-to-br from-brand to-orange-300 text-[#140A05] text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-brand/30 hover:-translate-y-0.5 transition-transform">Approve dispatch</button>
+      <div class="fade" style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--rule);">
+        <div class="row-top"><span class="ward">${a.incidents.ward}</span><span class="tag" style="color:var(--coral);background:var(--coral-soft)">Severity ${a.incidents.severity}</span></div>
+        <div class="desc" style="margin-bottom:9px">${a.incidents.description}<br>&rarr; ${a.volunteers.name} (${a.volunteers.resource_type.replace('_',' ')}), ${a.resources_committed} resources</div>
+        <button onclick="approve(${a.id}, ${a.incident_id})" class="btn btn-brand press" style="font-size:12px;padding:7px 14px;">Approve dispatch</button>
       </div>`).join('');
 
     const list = document.getElementById('incidentList');
@@ -327,19 +348,11 @@
     incidents.forEach(inc => {
       if (inc.duplicate_of) return;
       shown++;
-      if (inc.severity >= 4) {
-        L.circleMarker([inc.lat, inc.lon], { radius: 16, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.14, weight: 0 }).addTo(markers);
-      }
-      L.circleMarker([inc.lat, inc.lon], { radius: 7, color: '#08090D', fillColor: sevColor(inc.severity), fillOpacity: 0.95, weight: 2 })
-        .addTo(markers).bindPopup(`<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`);
+      if (inc.severity >= 4) L.circleMarker([inc.lat, inc.lon], { radius: 16, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.14, weight: 0 }).addTo(markers);
+      L.circleMarker([inc.lat, inc.lon], { radius: 7, color: '#0D1321', fillColor: sevColor(inc.severity), fillOpacity: 0.95, weight: 2 }).addTo(markers).bindPopup(`<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`);
       const row = document.createElement('div');
-      row.className = 'anim-fade bg-white/[0.02] hover:bg-white/[0.045] border border-transparent hover:border-white/10 rounded-xl p-3 mb-2 text-[13px] transition-all duration-300';
-      row.innerHTML = `
-        <div class="flex justify-between items-center mb-1">
-          <span class="font-bold">${inc.ward}</span>
-          <span class="${statusClasses[inc.status]} text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">${statusLabel(inc.status)}</span>
-        </div>
-        <div class="text-dim leading-relaxed">${inc.description}</div>`;
+      row.className = 'row fade';
+      row.innerHTML = `<div class="row-top"><span class="ward">${inc.ward}</span><span class="tag" style="${statusStyle[inc.status]}">${statusLabel(inc.status)}</span></div><div class="desc">${inc.description}</div>`;
       list.appendChild(row);
     });
     document.getElementById('incidentCount').textContent = shown;
@@ -348,41 +361,32 @@
     volList.innerHTML = '';
     volunteers.forEach(v => {
       const row = document.createElement('div');
-      row.className = 'anim-fade flex justify-between items-center bg-white/[0.02] rounded-xl p-3 mb-2 text-[13px]';
-      row.innerHTML = `
-        <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full ${v.available ? 'bg-green2' : 'bg-[#3A4150]'}"></span>
-        <span class="font-semibold">${v.name}</span></span>
-        <span class="text-dim text-[11.5px]">${v.resource_type.replace('_',' ')}</span>`;
+      row.className = 'row vol-row fade';
+      row.innerHTML = `<span><span class="dot" style="background:${v.available ? '#8FD4B8' : 'var(--ink-faint)'}"></span><span style="font-weight:600">${v.name}</span></span><span class="desc" style="font-size:11.5px">${v.resource_type.replace('_',' ')}</span>`;
       volList.appendChild(row);
     });
     document.getElementById('volunteerCount').textContent = volunteers.length;
 
     const logEl = document.getElementById('activityLog');
-    logEl.innerHTML = !activity.length
-      ? '<div class="text-dimmer text-[13px] italic py-2">No agent activity yet.</div>'
-      : activity.map(a => `
-        <div class="anim-fade flex gap-2.5 bg-white/[0.02] rounded-xl p-3 mb-2 text-[13px]">
-          <div class="w-6 h-6 rounded-md ${agentColor[a.agent_name] || 'text-dim bg-white/10'} flex items-center justify-center shrink-0 mt-0.5">
-            <i data-lucide="${agentIcon[a.agent_name] || 'bot'}" class="w-3.5 h-3.5"></i>
-          </div>
-          <div class="flex-1">
-            <div class="flex justify-between items-center mb-0.5">
-              <span class="font-bold capitalize">${a.agent_name}</span>
-              <span class="text-dimmer text-[10.5px] font-mono tabular-nums">${new Date(a.created_at).toLocaleTimeString()}</span>
-            </div>
-            <div class="text-dim leading-relaxed">${a.action}${a.details ? ' &mdash; ' + a.details : ''}</div>
-          </div>
-        </div>`).join('');
+    logEl.innerHTML = !activity.length ? '<div class="empty">No agent activity yet.</div>' : activity.map(a => {
+      const [icon, style] = agentStyle[a.agent_name] || ['bot', 'color:var(--ink-dim);background:rgba(255,255,255,0.06)'];
+      return `<div class="row fade log-row">
+        <span class="agent-tag" style="${style}">${a.agent_name}</span>
+        <div style="flex:1">
+          <div class="row-top" style="margin-bottom:1px"><span class="mono tnum" style="color:var(--ink-faint);font-size:10.5px">${new Date(a.created_at).toLocaleTimeString()}</span></div>
+          <div class="desc">${a.action}${a.details ? ' &mdash; ' + a.details : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
 
     if (activity.length) {
-      const newestId = activity[0].id;
       if (lastSeenActivityId !== null) {
         activity.filter(a => a.id > lastSeenActivityId).reverse().forEach(a => {
-          toast(agentIcon[a.agent_name] || 'bot', (agentColor[a.agent_name] || '').split(' ')[0] || 'text-dim',
-                `<b class="capitalize">${a.agent_name}</b> &mdash; ${a.action}${a.details ? ': ' + a.details.slice(0, 80) : ''}`);
+          const [icon, style] = agentStyle[a.agent_name] || ['bot', 'color:var(--ink-dim);background:rgba(255,255,255,0.06)'];
+          toast(icon, style, `<b style="text-transform:capitalize">${a.agent_name}</b> &mdash; ${a.action}${a.details ? ': ' + a.details.slice(0, 80) : ''}`);
         });
       }
-      lastSeenActivityId = newestId;
+      lastSeenActivityId = activity[0].id;
     }
     lucide.createIcons();
   }
@@ -396,8 +400,7 @@
       fetch(`${SUPABASE_URL}/rest/v1/volunteers?select=*`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/activity_log?select=*&order=created_at.desc&limit=20`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/dispatch_log?needs_human_approval=eq.true&approved_by_human=eq.false&select=*,incidents(ward,description,severity),volunteers(name,resource_type)`, { headers }).then(r => r.json()),
-    ]).then(([incidents, volunteers, activity, approvals]) => render(incidents, volunteers, activity, approvals))
-      .catch(err => console.error('load failed', err));
+    ]).then(([incidents, volunteers, activity, approvals]) => render(incidents, volunteers, activity, approvals)).catch(err => console.error('load failed', err));
   }
 
   load();
