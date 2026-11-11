@@ -78,7 +78,9 @@
 
     <div class="panel">
       <h2>Agent activity log</h2>
-      <div class="empty-log">No agent activity yet &mdash; this fills in once Sentinel, Dispatch and Bulletin are live.</div>
+      <div id="activityLog" class="scroll">
+        <div class="empty-log">No agent activity yet &mdash; this fills in once Sentinel, Dispatch and Bulletin are live.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -98,40 +100,73 @@
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  fetch('./data/mock.json')
-    .then(r => r.json())
-    .then(({ incidents, volunteers }) => {
-      const list = document.getElementById('incidentList');
-      incidents.forEach(inc => {
-        if (inc.duplicate_of) return; // collapsed into the incident it duplicates, same as Sentinel will do
-        L.circleMarker([inc.lat, inc.lon], {
-          radius: 6, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.85, weight: 1
-        }).addTo(map).bindPopup(
-          `<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`
-        );
+  // reads straight from Supabase's auto-generated REST API with the public anon key --
+  // safe to expose client-side, that's what the anon key is for. Polls every 5s so the
+  // dashboard reflects whatever Sentinel/Dispatch/Bulletin just wrote, no backend of our own.
+  const SUPABASE_URL = 'https://vlvibwcgsbvwuewvmmtw.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_j7rNFGv-Hle9c7rhAvlpDQ_Vrb1LgwA';
+  const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
 
-        const row = document.createElement('div');
-        row.className = 'incident-row';
-        row.innerHTML = `
-          <div class="meta">
-            <span class="ward">${inc.ward}</span>
-            <span class="badge ${inc.status}">${statusLabel(inc.status)}</span>
-          </div>
-          <div class="desc">${inc.description}</div>`;
-        list.appendChild(row);
-      });
+  const markers = L.layerGroup().addTo(map);
 
-      const volList = document.getElementById('volunteerList');
-      volunteers.forEach(v => {
-        const row = document.createElement('div');
-        row.className = 'vol-row';
-        row.innerHTML = `
-          <span><span class="dot" style="background:${v.available ? '#2E8B57' : '#B3B9C2'}"></span>
-          <span class="name">${v.name}</span></span>
-          <span class="type">${v.resource_type.replace('_',' ')}</span>`;
-        volList.appendChild(row);
-      });
+  function render(incidents, volunteers, activity) {
+    markers.clearLayers();
+
+    const list = document.getElementById('incidentList');
+    list.innerHTML = '';
+    incidents.forEach(inc => {
+      if (inc.duplicate_of) return; // collapsed into the incident it duplicates
+      L.circleMarker([inc.lat, inc.lon], {
+        radius: 6, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.85, weight: 1
+      }).addTo(markers).bindPopup(
+        `<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`
+      );
+      const row = document.createElement('div');
+      row.className = 'incident-row';
+      row.innerHTML = `
+        <div class="meta">
+          <span class="ward">${inc.ward}</span>
+          <span class="badge ${inc.status}">${statusLabel(inc.status)}</span>
+        </div>
+        <div class="desc">${inc.description}</div>`;
+      list.appendChild(row);
     });
+
+    const volList = document.getElementById('volunteerList');
+    volList.innerHTML = '';
+    volunteers.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'vol-row';
+      row.innerHTML = `
+        <span><span class="dot" style="background:${v.available ? '#2E8B57' : '#B3B9C2'}"></span>
+        <span class="name">${v.name}</span></span>
+        <span class="type">${v.resource_type.replace('_',' ')}</span>`;
+      volList.appendChild(row);
+    });
+
+    const logEl = document.getElementById('activityLog');
+    if (!activity.length) {
+      logEl.innerHTML = '<div class="empty-log">No agent activity yet &mdash; this fills in once Sentinel, Dispatch and Bulletin are live.</div>';
+    } else {
+      logEl.innerHTML = activity.map(a => `
+        <div class="incident-row">
+          <div class="meta"><span class="ward">${a.agent_name}</span><span style="color:var(--muted);font-size:11px">${new Date(a.created_at).toLocaleTimeString()}</span></div>
+          <div class="desc">${a.action}${a.details ? ' &mdash; ' + a.details : ''}</div>
+        </div>`).join('');
+    }
+  }
+
+  function load() {
+    Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/incidents?select=*`, { headers }).then(r => r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/volunteers?select=*`, { headers }).then(r => r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/activity_log?select=*&order=created_at.desc&limit=20`, { headers }).then(r => r.json()),
+    ]).then(([incidents, volunteers, activity]) => render(incidents, volunteers, activity))
+      .catch(err => console.error('load failed', err));
+  }
+
+  load();
+  setInterval(load, 5000);
 </script>
 
 </body>
