@@ -105,7 +105,7 @@
 
   .layout { max-width: 1360px; margin: 0 auto; padding: 24px 32px 40px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-  #map { height: 580px; border-radius: 14px; border: 1px solid var(--rule); }
+  #map { height: 580px; width: 100%; border-radius: 14px; border: 1px solid var(--rule); background: var(--bg2); }
   .leaflet-popup-content-wrapper { background: var(--bg2); color: var(--ink); border-radius: 8px; }
   .leaflet-popup-tip { background: var(--bg2); }
   .leaflet-control-attribution { background: rgba(13,19,33,0.8) !important; color: var(--ink-faint) !important; }
@@ -267,6 +267,7 @@
 
   const map = L.map('map').setView([19.06, 72.88], 11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 200); // grid layout can settle after Leaflet reads the container size
 
   const SUPABASE_URL = 'https://vlvibwcgsbvwuewvmmtw.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_j7rNFGv-Hle9c7rhAvlpDQ_Vrb1LgwA';
