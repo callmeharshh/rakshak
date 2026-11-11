@@ -15,7 +15,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from common import sb_request, groq_chat, haversine_km, log_activity  # noqa: E402
+from common import sb_request, groq_chat, haversine_km, log_activity, heartbeat  # noqa: E402
 
 
 def score_with_llm(description):
@@ -67,6 +67,7 @@ def process_once():
 if __name__ == "__main__":
     if "--loop" in sys.argv:
         while True:
+            heartbeat("sentinel")
             process_once()
             time.sleep(10)
     else:

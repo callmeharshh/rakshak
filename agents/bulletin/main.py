@@ -20,7 +20,7 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from common import sb_request, groq_chat, log_activity  # noqa: E402
+from common import sb_request, groq_chat, log_activity, heartbeat  # noqa: E402
 
 LANG_NAME = {"hi": "Hinglish (Hindi-English code-mixed, Roman script, no Devanagari)",
              "mr": "Marathi-English code-mixed (Roman script, no Devanagari)"}
@@ -78,6 +78,7 @@ if __name__ == "__main__":
         limit = int(sys.argv[sys.argv.index("--limit") + 1])
     if "--loop" in sys.argv:
         while True:
+            heartbeat("bulletin")
             process_once(limit)
             time.sleep(10)
     else:

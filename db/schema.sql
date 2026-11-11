@@ -38,7 +38,13 @@ CREATE TABLE dispatch_log (
     -- the guardrail from the idea deck, encoded as a real column, not a slide bullet:
     needs_human_approval    BOOLEAN NOT NULL DEFAULT false, -- true when resources_committed > 2 OR incident.severity >= 4
     approved_by_human       BOOLEAN,
-    approved_at             TIMESTAMPTZ
+    approved_at             TIMESTAMPTZ,
+    distance_km             NUMERIC                 -- haversine distance incident -> assigned volunteer, for the dashboard's "why this volunteer" reasoning
+);
+
+CREATE TABLE agent_heartbeats (
+    agent_name  TEXT PRIMARY KEY,       -- 'sentinel' | 'dispatch' | 'bulletin' | 'intake'
+    last_seen   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE activity_log (

@@ -1,4 +1,5 @@
 """Shared plumbing for the three agents: env loading, Supabase REST, Haversine distance."""
+import datetime
 import json
 import math
 import os
@@ -21,13 +22,14 @@ SUPABASE_KEY = os.environ["SUPABASE_ANON_KEY"]
 GROQ_KEY = os.environ["LLM_API_KEY"]
 
 
-def sb_request(path, method="GET", body=None, return_repr=False):
+def sb_request(path, method="GET", body=None, return_repr=False, upsert=False):
     headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
     data = None
     if body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
-        headers["Prefer"] = "return=representation" if return_repr else "return=minimal"
+        prefer = "return=representation" if return_repr else "return=minimal"
+        headers["Prefer"] = f"resolution=merge-duplicates,{prefer}" if upsert else prefer
     req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}", method=method, data=data, headers=headers)
     resp = urllib.request.urlopen(req).read()
     return json.loads(resp) if resp else None
@@ -72,3 +74,8 @@ assert haversine_km(19.0, 72.8, 19.0, 72.8) < 1e-9  # same point -> 0 km, sanity
 
 def log_activity(agent_name, incident_id, action, details=""):
     sb_request("activity_log", "POST", {"agent_name": agent_name, "incident_id": incident_id, "action": action, "details": details})
+
+
+def heartbeat(agent_name):
+    sb_request("agent_heartbeats?on_conflict=agent_name", "POST",
+                {"agent_name": agent_name, "last_seen": datetime.datetime.utcnow().isoformat() + "Z"}, upsert=True)

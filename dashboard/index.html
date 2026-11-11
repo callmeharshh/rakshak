@@ -58,6 +58,8 @@
   }
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: pulseRing 1.8s ease-in-out infinite; }
   @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(217,164,65,.5); } 70% { box-shadow: 0 0 0 7px rgba(217,164,65,0); } 100% { box-shadow: 0 0 0 0 rgba(217,164,65,0); } }
+  .hb-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; background: var(--ink-faint); }
+  .hb-dot.on { background: #8FD4B8; animation: pulseRing 1.8s ease-in-out infinite; box-shadow: 0 0 0 0 rgba(143,212,184,.5); }
   .spin { display: inline-block; transition: transform .7s var(--spring); }
   .spin.go { transform: rotate(360deg); }
 
@@ -178,7 +180,10 @@
 
 <div class="ticker in">
   <i data-lucide="radio" style="width:14px;height:14px;color:var(--gold)"></i>
-  Sentinel triaging &middot; Dispatch matching volunteers &middot; Bulletin notifying residents on Telegram &middot; human-approval guardrail active
+  <span id="hb-sentinel"><span class="hb-dot"></span>Sentinel</span> triaging &middot;
+  <span id="hb-dispatch"><span class="hb-dot"></span>Dispatch</span> matching volunteers &middot;
+  <span id="hb-bulletin"><span class="hb-dot"></span>Bulletin</span> notifying residents on Telegram &middot;
+  <span id="hb-intake"><span class="hb-dot"></span>Telegram intake</span> listening &middot; human-approval guardrail active
 </div>
 
 <div class="banner">
@@ -386,7 +391,7 @@
     document.getElementById('approvalsList').innerHTML = approvals.map(a => `
       <div class="fade" style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--rule);">
         <div class="row-top"><span class="ward">${a.incidents.ward}</span><span class="tag" style="color:var(--coral);background:var(--coral-soft)">Severity ${a.incidents.severity}</span></div>
-        <div class="desc" style="margin-bottom:9px">${a.incidents.description}<br>&rarr; ${a.volunteers.name} (${a.volunteers.resource_type.replace('_',' ')}), ${a.resources_committed} resources</div>
+        <div class="desc" style="margin-bottom:9px">${a.incidents.description}<br>&rarr; ${a.volunteers.name} (${a.volunteers.resource_type.replace('_',' ')}), ${a.resources_committed} resources${a.distance_km != null ? `, <b style="color:var(--ink)">${a.distance_km}km away</b>` : ''}</div>
         <button onclick="approve(${a.id}, ${a.incident_id})" class="btn btn-brand press" style="font-size:12px;padding:7px 14px;">Approve dispatch</button>
       </div>`).join('');
 
@@ -447,6 +452,16 @@
     lucide.createIcons();
   }
 
+  function renderHeartbeats(heartbeats) {
+    const now = Date.now();
+    (heartbeats || []).forEach(h => {
+      const el = document.getElementById(`hb-${h.agent_name}`);
+      if (!el) return;
+      const alive = (now - new Date(h.last_seen).getTime()) < 40000; // intake's Telegram long-poll can take up to 30s/cycle
+      el.querySelector('.hb-dot').classList.toggle('on', alive);
+    });
+  }
+
   function load() {
     const icon = document.getElementById('refreshIcon');
     icon.classList.add('go');
@@ -456,7 +471,11 @@
       fetch(`${SUPABASE_URL}/rest/v1/volunteers?select=*`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/activity_log?select=*&order=created_at.desc&limit=20`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/dispatch_log?needs_human_approval=eq.true&approved_by_human=eq.false&select=*,incidents(ward,description,severity),volunteers(name,resource_type)`, { headers }).then(r => r.json()),
-    ]).then(([incidents, volunteers, activity, approvals]) => render(incidents, volunteers, activity, approvals)).catch(err => console.error('load failed', err));
+      fetch(`${SUPABASE_URL}/rest/v1/agent_heartbeats?select=*`, { headers }).then(r => r.json()),
+    ]).then(([incidents, volunteers, activity, approvals, heartbeats]) => {
+      render(incidents, volunteers, activity, approvals);
+      renderHeartbeats(heartbeats);
+    }).catch(err => console.error('load failed', err));
   }
 
   load();

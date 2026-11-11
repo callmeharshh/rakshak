@@ -14,7 +14,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from common import sb_request, haversine_km, log_activity  # noqa: E402
+from common import sb_request, haversine_km, log_activity, heartbeat  # noqa: E402
 
 NEED_TO_RESOURCE = {
     "rescue": "rescue_squad",
@@ -33,8 +33,9 @@ def nearest_volunteer(incident, volunteers):
     wanted = NEED_TO_RESOURCE.get(incident["need_type"])
     candidates = [v for v in volunteers if v["available"] and v["resource_type"] == wanted]
     if not candidates:
-        return None
-    return min(candidates, key=lambda v: haversine_km(incident["lat"], incident["lon"], v["lat"], v["lon"]))
+        return None, None
+    best = min(candidates, key=lambda v: haversine_km(incident["lat"], incident["lon"], v["lat"], v["lon"]))
+    return best, haversine_km(incident["lat"], incident["lon"], best["lat"], best["lon"])
 
 
 def process_once():
@@ -49,33 +50,35 @@ def process_once():
     for inc in triaged:
         if inc["id"] in already_logged_ids:
             continue  # already has a dispatch_log row (e.g. awaiting human approval) -- don't duplicate it
-        volunteer = nearest_volunteer(inc, volunteers)
+        volunteer, distance_km = nearest_volunteer(inc, volunteers)
         if not volunteer:
             print(f"#{inc['id']}: no available volunteer for need_type={inc['need_type']}")
             continue
 
         resources = resources_for(inc["severity"])
         needs_approval = resources > 2 or inc["severity"] >= 4
+        reason = f"{volunteer['name']} ({resources} resources, {distance_km:.1f}km away)"
 
         sb_request("dispatch_log", "POST", {
             "incident_id": inc["id"], "volunteer_id": volunteer["id"],
             "resources_committed": resources, "needs_human_approval": needs_approval,
-            "approved_by_human": False if needs_approval else True,
+            "approved_by_human": False if needs_approval else True, "distance_km": round(distance_km, 1),
         })
 
         if needs_approval:
             log_activity("dispatch", inc["id"], "held_for_approval",
-                          f"{volunteer['name']} ({resources} resources) -- severity {inc['severity']}, awaiting human approval")
-            print(f"#{inc['id']}: HELD for approval -> {volunteer['name']} ({resources} resources)")
+                          f"{reason} -- severity {inc['severity']}, awaiting human approval")
+            print(f"#{inc['id']}: HELD for approval -> {reason}")
         else:
             sb_request(f"incidents?id=eq.{inc['id']}", "PATCH", {"status": "dispatched"})
-            log_activity("dispatch", inc["id"], "dispatched", f"{volunteer['name']} ({resources} resources), auto-confirmed")
-            print(f"#{inc['id']}: dispatched -> {volunteer['name']} ({resources} resources)")
+            log_activity("dispatch", inc["id"], "dispatched", f"{reason}, auto-confirmed")
+            print(f"#{inc['id']}: dispatched -> {reason}")
 
 
 if __name__ == "__main__":
     if "--loop" in sys.argv:
         while True:
+            heartbeat("dispatch")
             process_once()
             time.sleep(10)
     else:

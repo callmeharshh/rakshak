@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from common import sb_request, log_activity, WARDS  # noqa: E402
+from common import sb_request, log_activity, heartbeat, WARDS  # noqa: E402
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 API = f"https://api.telegram.org/bot{TOKEN}"
@@ -63,6 +63,7 @@ def main():
     offset = 0
     print("Telegram intake listening for messages to @RakshakBulletinBot...")
     while True:
+        heartbeat("intake")
         for update in get_updates(offset):
             offset = update["update_id"] + 1
             try:
