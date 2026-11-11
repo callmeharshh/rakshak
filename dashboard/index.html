@@ -27,6 +27,23 @@
     background: var(--bg); color: var(--navy); -webkit-font-smoothing: antialiased;
   }
 
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  header, .banner, .stats, .layout { animation: fadeUp .5s ease both; }
+  .banner { animation-delay: .05s; }
+  .stats { animation-delay: .1s; }
+  .layout { animation-delay: .18s; }
+  .stat-card:nth-child(1) { animation: fadeUp .45s ease both .12s; }
+  .stat-card:nth-child(2) { animation: fadeUp .45s ease both .18s; }
+  .stat-card:nth-child(3) { animation: fadeUp .45s ease both .24s; }
+  .stat-card:nth-child(4) { animation: fadeUp .45s ease both .3s; }
+
+  .refresh-spin { display: inline-block; transition: transform .6s cubic-bezier(.4,0,.2,1); }
+  .refresh-spin.spinning { transform: rotate(360deg); }
+
+  .fade-swap { transition: opacity .18s ease; }
+  .fade-swap.fading { opacity: 0; }
+
   header {
     background: linear-gradient(120deg, #0B1F3A 0%, #122A4F 55%, #1B3761 100%);
     color: #fff; padding: 18px 28px;
@@ -87,6 +104,11 @@
     background: var(--cardbg); border: 1px solid var(--border); border-radius: 14px;
     padding: 18px; box-shadow: 0 1px 2px rgba(11,31,58,0.03), 0 8px 20px rgba(11,31,58,0.04);
   }
+  #approvalsPanel {
+    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .3s ease, padding .35s ease, margin .35s ease;
+    overflow: hidden; max-height: 600px; opacity: 1;
+  }
+  #approvalsPanel.collapsed { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; border-width: 0; margin: 0; }
   .panel h2 {
     font-size: 13px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.4px;
     color: var(--muted); font-weight: 700; display: flex; align-items: center; justify-content: space-between;
@@ -108,6 +130,7 @@
     border-radius: 20px; color: #fff; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap;
   }
   .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.85); }
+  .incident-row, .vol-row, .approval-card { animation: fadeIn .3s ease both; }
   .badge.new { background: #8A96A3; }
   .badge.triaged { background: var(--slate); }
   .badge.dispatched { background: var(--orange); }
@@ -136,6 +159,7 @@
     box-shadow: 0 2px 8px rgba(255,107,53,0.3); transition: transform .12s, box-shadow .12s;
   }
   .approve-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,107,53,0.4); }
+  .approve-btn:active { transform: scale(.96); }
   .approve-btn:disabled { opacity: 0.5; cursor: default; }
 
   footer { padding: 20px 24px 32px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -152,7 +176,7 @@
       <div class="tag">Smooth Operator &middot; PS-03 &middot; AgentX Hackathon 2026</div>
     </div>
   </div>
-  <div class="live-pill"><span class="live-dot"></span> Live &middot; auto-refreshing</div>
+  <div class="live-pill"><span class="live-dot"></span> Live <span class="refresh-spin" id="refreshIcon">&#8635;</span></div>
 </header>
 
 <div class="banner">
@@ -169,7 +193,7 @@
   <div id="map"></div>
 
   <div style="display:flex; flex-direction:column; gap:16px;">
-    <div class="panel" id="approvalsPanel" style="display:none;">
+    <div class="panel collapsed" id="approvalsPanel">
       <h2>Needs your approval</h2>
       <div id="approvalsList" class="scroll"></div>
     </div>
@@ -248,11 +272,25 @@
       { icon: '&#128664;', color: 'var(--orange)', bg: '#FFF0E8', n: counts.dispatched, label: 'Dispatched' },
       { icon: '&#10003;', color: 'var(--green)', bg: '#E8F7EE', n: counts.resolved, label: 'Resolved' },
     ];
-    document.getElementById('statsRow').innerHTML = cards.map(c => `
+    const statsRow = document.getElementById('statsRow');
+    const firstRender = !statsRow.childElementCount;
+    statsRow.innerHTML = cards.map(c => `
       <div class="stat-card" style="--accent:${c.color}; --accent-bg:${c.bg}">
         <div class="icon">${c.icon}</div>
-        <div><div class="num" style="color:${c.color}">${c.n}</div><div class="label">${c.label}</div></div>
+        <div><div class="num" data-target="${c.n}" style="color:${c.color}">0</div><div class="label">${c.label}</div></div>
       </div>`).join('');
+    statsRow.querySelectorAll('.num').forEach(el => animateCount(el, firstRender ? 400 : 250));
+  }
+
+  function animateCount(el, duration) {
+    const target = Number(el.dataset.target);
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / duration);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))); // ease-out cubic
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
 
   function render(incidents, volunteers, activity, approvals) {
@@ -261,7 +299,7 @@
 
     const approvalsPanel = document.getElementById('approvalsPanel');
     const approvalsList = document.getElementById('approvalsList');
-    approvalsPanel.style.display = approvals.length ? 'block' : 'none';
+    approvalsPanel.classList.toggle('collapsed', approvals.length === 0);
     approvalsList.innerHTML = approvals.map(a => `
       <div class="approval-card">
         <div class="meta">
@@ -326,6 +364,9 @@
   }
 
   function load() {
+    const icon = document.getElementById('refreshIcon');
+    icon.classList.add('spinning');
+    setTimeout(() => icon.classList.remove('spinning'), 600);
     Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/incidents?select=*`, { headers }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/volunteers?select=*`, { headers }).then(r => r.json()),
