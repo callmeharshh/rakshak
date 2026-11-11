@@ -43,8 +43,12 @@ def process_once():
         print("no triaged incidents")
         return
     volunteers = sb_request("volunteers?select=*")
+    already_logged = sb_request("dispatch_log?select=incident_id")
+    already_logged_ids = {row["incident_id"] for row in already_logged}
 
     for inc in triaged:
+        if inc["id"] in already_logged_ids:
+            continue  # already has a dispatch_log row (e.g. awaiting human approval) -- don't duplicate it
         volunteer = nearest_volunteer(inc, volunteers)
         if not volunteer:
             print(f"#{inc['id']}: no available volunteer for need_type={inc['need_type']}")
