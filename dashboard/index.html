@@ -6,7 +6,6 @@
 <title>RAKSHAK — Live Response Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.js"></script>
 <style>
   /* palette: storm-blue ground (not generic near-black), terracotta signal (brand), muted gold for resolved
@@ -105,12 +104,12 @@
 
   .layout { max-width: 1360px; margin: 0 auto; padding: 24px 32px 40px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-  #map { height: 580px; width: 100%; border-radius: 14px; border: 1px solid var(--rule); background: var(--bg2); }
-  .leaflet-popup-content-wrapper { background: var(--bg2); color: var(--ink); border-radius: 8px; }
-  .leaflet-popup-tip { background: var(--bg2); }
-  .leaflet-control-attribution { background: rgba(13,19,33,0.8) !important; color: var(--ink-faint) !important; }
-  .leaflet-control-attribution a { color: var(--ink-dim) !important; }
-  .leaflet-tile-pane { filter: invert(1) hue-rotate(190deg) brightness(0.9) contrast(0.92) saturate(1.1); }
+  #map { height: 580px; width: 100%; border-radius: 14px; border: 1px solid var(--rule); background: var(--bg2); display: block; }
+  #map .ring { fill: none; stroke: var(--rule); }
+  #map .wardlabel { fill: var(--ink-faint); font-size: 9px; font-family: 'JetBrains Mono'; }
+  #map .dot-halo { opacity: 0.16; }
+  #map .dot:hover { stroke: #fff; stroke-width: 2; }
+  #map title { pointer-events: none; }
 
   /* only the urgent panel gets strong card chrome -- everything else is plain rows + a label */
   .urgent-card {
@@ -211,7 +210,7 @@
 </div>
 
 <div class="layout in">
-  <div id="map"></div>
+  <svg id="map" viewBox="0 0 400 580" preserveAspectRatio="xMidYMid meet"></svg>
 
   <div style="display:flex; flex-direction:column; gap:20px;">
     <div id="approvals" class="urgent-card collapsed">
@@ -242,7 +241,6 @@
   RAKSHAK &middot; PS-03, AgentX Hackathon 2026. Repo: <a href="https://github.com/callmeharshh/rakshak">github.com/callmeharshh/rakshak</a>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
   lucide.createIcons();
 
@@ -265,14 +263,27 @@
   };
   document.getElementById('simWard').innerHTML = Object.keys(WARDS).map(w => `<option value="${w}">${w}</option>`).join('');
 
-  const map = L.map('map').setView([19.06, 72.88], 11);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-  setTimeout(() => map.invalidateSize(), 200); // grid layout can settle after Leaflet reads the container size
+  // self-contained SVG incident map -- no tile server, no external map dependency, so it can
+  // never go blank from a blocked/rate-limited CDN the way two different tile providers already did.
+  const LAT_MIN = 18.995, LAT_MAX = 19.135, LON_MIN = 72.815, LON_MAX = 72.915;
+  const project = (lat, lon) => [
+    ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 400,
+    ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 580,
+  ];
+  const mapSvg = document.getElementById('map');
+  const svgNS = 'http://www.w3.org/2000/svg';
+  mapSvg.innerHTML = `
+    <rect width="400" height="580" fill="var(--bg2)" />
+    ${[80, 160, 240, 320].map(r => `<circle class="ring" cx="200" cy="290" r="${r}" />`).join('')}
+    ${Object.entries(WARDS).map(([w, [lat, lon]]) => {
+      const [x, y] = project(lat, lon);
+      return `<circle cx="${x}" cy="${y}" r="2" fill="var(--ink-faint)" /><text class="wardlabel" x="${x + 6}" y="${y + 3}">${w}</text>`;
+    }).join('')}
+    <g id="incidentDots"></g>`;
 
   const SUPABASE_URL = 'https://vlvibwcgsbvwuewvmmtw.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_j7rNFGv-Hle9c7rhAvlpDQ_Vrb1LgwA';
   const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
-  const markers = L.layerGroup().addTo(map);
   let lastSeenActivityId = null;
 
   function toast(icon, style, text) {
@@ -321,7 +332,8 @@
   }
 
   function render(incidents, volunteers, activity, approvals) {
-    markers.clearLayers();
+    const dotsG = document.getElementById('incidentDots');
+    dotsG.innerHTML = '';
     const live = incidents.filter(i => !i.duplicate_of);
     const counts = {
       total: live.length,
@@ -349,8 +361,10 @@
     incidents.forEach(inc => {
       if (inc.duplicate_of) return;
       shown++;
-      if (inc.severity >= 4) L.circleMarker([inc.lat, inc.lon], { radius: 16, color: sevColor(inc.severity), fillColor: sevColor(inc.severity), fillOpacity: 0.14, weight: 0 }).addTo(markers);
-      L.circleMarker([inc.lat, inc.lon], { radius: 7, color: '#0D1321', fillColor: sevColor(inc.severity), fillOpacity: 0.95, weight: 2 }).addTo(markers).bindPopup(`<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`);
+      const [x, y] = project(inc.lat, inc.lon);
+      const color = sevColor(inc.severity);
+      if (inc.severity >= 4) dotsG.innerHTML += `<circle class="dot-halo" cx="${x}" cy="${y}" r="13" fill="${color}" />`;
+      dotsG.innerHTML += `<circle class="dot" cx="${x}" cy="${y}" r="5" fill="${color}" stroke="#0D1321" stroke-width="1.5"><title>${inc.ward} · severity ${inc.severity}\n${inc.description}</title></circle>`;
       const row = document.createElement('div');
       row.className = 'row fade';
       row.innerHTML = `<div class="row-top"><span class="ward">${inc.ward}</span><span class="tag" style="${statusStyle[inc.status]}">${statusLabel(inc.status)}</span></div><div class="desc">${inc.description}</div>`;
