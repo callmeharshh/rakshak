@@ -6,6 +6,7 @@
 <title>RAKSHAK — Live Response Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.js"></script>
 <style>
   /* palette: storm-blue ground (not generic near-black), terracotta signal (brand), muted gold for resolved
@@ -104,12 +105,20 @@
 
   .layout { max-width: 1360px; margin: 0 auto; padding: 24px 32px 40px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-  #map { height: 580px; width: 100%; border-radius: 14px; border: 1px solid var(--rule); background: var(--bg2); display: block; }
-  #map .ring { fill: none; stroke: var(--rule); }
-  #map .wardlabel { fill: var(--ink-faint); font-size: 9px; font-family: 'JetBrains Mono'; }
-  #map .dot-halo { opacity: 0.16; }
-  #map .dot:hover { stroke: #fff; stroke-width: 2; }
-  #map title { pointer-events: none; }
+  #mapWrap { height: 580px; width: 100%; border-radius: 14px; border: 1px solid var(--rule); background: var(--bg2); position: relative; overflow: hidden; }
+  #mapLeaflet, #mapSvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #mapSvg { display: none; }
+  #mapSvg .ring { fill: none; stroke: var(--rule); }
+  #mapSvg .wardlabel { fill: var(--ink-faint); font-size: 9px; font-family: 'JetBrains Mono'; }
+  #mapSvg .dot-halo { opacity: 0.16; }
+  #mapSvg .dot:hover { stroke: #fff; stroke-width: 2; }
+  #mapSvg title { pointer-events: none; }
+  .leaflet-popup-content-wrapper { background: var(--bg2); color: var(--ink); border-radius: 8px; }
+  .leaflet-popup-tip { background: var(--bg2); }
+  .leaflet-control-attribution { background: rgba(13,19,33,0.8) !important; color: var(--ink-faint) !important; }
+  .leaflet-control-attribution a { color: var(--ink-dim) !important; }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(190deg) brightness(0.9) contrast(0.92) saturate(1.1); }
+  .map-fallback-note { position: absolute; bottom: 8px; left: 8px; font-size: 10.5px; color: var(--ink-faint); background: rgba(13,19,33,0.75); padding: 3px 8px; border-radius: 6px; z-index: 450; display: none; }
 
   /* only the urgent panel gets strong card chrome -- everything else is plain rows + a label */
   .urgent-card {
@@ -210,7 +219,11 @@
 </div>
 
 <div class="layout in">
-  <svg id="map" viewBox="0 0 400 580" preserveAspectRatio="xMidYMid meet"></svg>
+  <div id="mapWrap">
+    <div id="mapLeaflet"></div>
+    <svg id="mapSvg" viewBox="0 0 400 580" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="map-fallback-note" id="mapFallbackNote">Map tiles blocked on this network/browser &mdash; showing offline radar view</div>
+  </div>
 
   <div style="display:flex; flex-direction:column; gap:20px;">
     <div id="approvals" class="urgent-card collapsed">
@@ -241,6 +254,7 @@
   RAKSHAK &middot; PS-03, AgentX Hackathon 2026. Repo: <a href="https://github.com/callmeharshh/rakshak">github.com/callmeharshh/rakshak</a>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
   lucide.createIcons();
 
@@ -270,8 +284,7 @@
     ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 400,
     ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 580,
   ];
-  const mapSvg = document.getElementById('map');
-  const svgNS = 'http://www.w3.org/2000/svg';
+  const mapSvg = document.getElementById('mapSvg');
   mapSvg.innerHTML = `
     <rect width="400" height="580" fill="var(--bg2)" />
     ${[80, 160, 240, 320].map(r => `<circle class="ring" cx="200" cy="290" r="${r}" />`).join('')}
@@ -280,6 +293,27 @@
       return `<circle cx="${x}" cy="${y}" r="2" fill="var(--ink-faint)" /><text class="wardlabel" x="${x + 6}" y="${y + 3}">${w}</text>`;
     }).join('')}
     <g id="incidentDots"></g>`;
+
+  // try the real street map first (more accurate); if tiles don't actually load -- blocked by an
+  // extension, firewall, or a dead CDN, which has happened twice already -- fall back to the SVG
+  // radar view above, which has no network dependency and can't go blank.
+  let leafletMap = null, leafletMarkers = null;
+  const tileProbe = new Image();
+  const probeTimeout = setTimeout(() => useFallback(), 2500);
+  tileProbe.onload = () => {
+    clearTimeout(probeTimeout);
+    leafletMap = L.map('mapLeaflet').setView([19.06, 72.88], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(leafletMap);
+    leafletMarkers = L.layerGroup().addTo(leafletMap);
+    setTimeout(() => leafletMap.invalidateSize(), 200);
+  };
+  tileProbe.onerror = () => { clearTimeout(probeTimeout); useFallback(); };
+  tileProbe.src = 'https://a.tile.openstreetmap.org/11/1202/700.png';
+  function useFallback() {
+    document.getElementById('mapLeaflet').style.display = 'none';
+    mapSvg.style.display = 'block';
+    document.getElementById('mapFallbackNote').style.display = 'block';
+  }
 
   const SUPABASE_URL = 'https://vlvibwcgsbvwuewvmmtw.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_j7rNFGv-Hle9c7rhAvlpDQ_Vrb1LgwA';
@@ -334,6 +368,7 @@
   function render(incidents, volunteers, activity, approvals) {
     const dotsG = document.getElementById('incidentDots');
     dotsG.innerHTML = '';
+    if (leafletMarkers) leafletMarkers.clearLayers();
     const live = incidents.filter(i => !i.duplicate_of);
     const counts = {
       total: live.length,
@@ -361,10 +396,16 @@
     incidents.forEach(inc => {
       if (inc.duplicate_of) return;
       shown++;
-      const [x, y] = project(inc.lat, inc.lon);
       const color = sevColor(inc.severity);
-      if (inc.severity >= 4) dotsG.innerHTML += `<circle class="dot-halo" cx="${x}" cy="${y}" r="13" fill="${color}" />`;
-      dotsG.innerHTML += `<circle class="dot" cx="${x}" cy="${y}" r="5" fill="${color}" stroke="#0D1321" stroke-width="1.5"><title>${inc.ward} · severity ${inc.severity}\n${inc.description}</title></circle>`;
+      if (leafletMarkers) {
+        if (inc.severity >= 4) L.circleMarker([inc.lat, inc.lon], { radius: 16, color, fillColor: color, fillOpacity: 0.14, weight: 0 }).addTo(leafletMarkers);
+        L.circleMarker([inc.lat, inc.lon], { radius: 7, color: '#0D1321', fillColor: color, fillOpacity: 0.95, weight: 2 })
+          .addTo(leafletMarkers).bindPopup(`<b>${inc.ward}</b> &middot; severity ${inc.severity}<br>${inc.description}`);
+      } else {
+        const [x, y] = project(inc.lat, inc.lon);
+        if (inc.severity >= 4) dotsG.innerHTML += `<circle class="dot-halo" cx="${x}" cy="${y}" r="13" fill="${color}" />`;
+        dotsG.innerHTML += `<circle class="dot" cx="${x}" cy="${y}" r="5" fill="${color}" stroke="#0D1321" stroke-width="1.5"><title>${inc.ward} · severity ${inc.severity}\n${inc.description}</title></circle>`;
+      }
       const row = document.createElement('div');
       row.className = 'row fade';
       row.innerHTML = `<div class="row-top"><span class="ward">${inc.ward}</span><span class="tag" style="${statusStyle[inc.status]}">${statusLabel(inc.status)}</span></div><div class="desc">${inc.description}</div>`;
