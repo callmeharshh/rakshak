@@ -78,8 +78,11 @@ def process_once():
 if __name__ == "__main__":
     if "--loop" in sys.argv:
         while True:
-            heartbeat("dispatch")
-            process_once()
+            try:
+                heartbeat("dispatch")
+                process_once()
+            except Exception as e:
+                print(f"loop error (continuing): {e}")
             time.sleep(10)
     else:
         process_once()

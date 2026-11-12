@@ -13,6 +13,7 @@ import itertools
 import json
 import os
 import sys
+import time
 import urllib.parse
 import urllib.request
 
@@ -63,13 +64,17 @@ def main():
     offset = 0
     print("Telegram intake listening for messages to @RakshakBulletinBot...")
     while True:
-        heartbeat("intake")
-        for update in get_updates(offset):
-            offset = update["update_id"] + 1
-            try:
-                handle(update)
-            except Exception as e:
-                print(f"error handling update: {e}")
+        try:
+            heartbeat("intake")
+            for update in get_updates(offset):
+                offset = update["update_id"] + 1
+                try:
+                    handle(update)
+                except Exception as e:
+                    print(f"error handling update: {e}")
+        except Exception as e:
+            print(f"poll error (continuing): {e}")
+            time.sleep(3)
 
 
 if __name__ == "__main__":

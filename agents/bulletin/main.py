@@ -78,8 +78,11 @@ if __name__ == "__main__":
         limit = int(sys.argv[sys.argv.index("--limit") + 1])
     if "--loop" in sys.argv:
         while True:
-            heartbeat("bulletin")
-            process_once(limit)
+            try:
+                heartbeat("bulletin")
+                process_once(limit)
+            except Exception as e:
+                print(f"loop error (continuing): {e}")
             time.sleep(10)
     else:
         process_once(limit)
